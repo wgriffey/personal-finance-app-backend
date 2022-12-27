@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from authuser.models import User
 from rest_framework import serializers
 from rest_framework.authtoken.views import Token
 from .models import Article
@@ -11,7 +11,7 @@ class ArticleSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'password']
+        fields = ['id', 'username', 'email', 'password']
 
         extra_kwargs = {'password': {
             'write_only': True,

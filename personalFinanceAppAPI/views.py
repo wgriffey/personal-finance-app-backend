@@ -1,6 +1,6 @@
 from django.shortcuts import render, HttpResponse, get_object_or_404
 from django.http import JsonResponse
-from django.contrib.auth.models import User
+from authuser.models import User
 from rest_framework import status, generics, mixins, viewsets
 from rest_framework.parsers import JSONParser
 from rest_framework.decorators import api_view, APIView
