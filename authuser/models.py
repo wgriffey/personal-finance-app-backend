@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import UserManager, AbstractBaseUser, PermissionsMixin
 from django.utils import timezone
+from rest_framework.authtoken.views import Token
 
 class CustomUserManager(UserManager):
     def _create_user(self, username, email, password, **extra_fields):
@@ -25,12 +26,22 @@ class CustomUserManager(UserManager):
     def create_user(self, username=None, email=None, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', False)
         extra_fields.setdefault('is_superuser', False)
-        return self._create_user(username, email, password, **extra_fields)
+        new_user = self._create_user(username, email, password, **extra_fields)
+        Token.objects.create(user=new_user)
+
+        return new_user
+
+        
 
     def create_super_user(self, username=None, email=None, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
-        return self._create_user(username, email, password, **extra_fields)
+
+        new_super_user = self._create_user(username, email, password, **extra_fields)
+
+        Token.objects.create(user=new_super_user)
+        
+        return new_super_user
 
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(blank=True, default = '', unique = True)
@@ -46,7 +57,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'username'
-    EMAIL_FIELD = 'email'
     REQUIRED_FIELDS = ['email']
 
     class Meta:
