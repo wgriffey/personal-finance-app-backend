@@ -45,7 +45,7 @@ class Transaction(models.Model):
         return self.transaction_id
 
 class TransactionCategory(models.Model):
-    transaction_id = models.ForeignKey(Transaction, on_delete=models.CASCADE)
+    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE)
     category = models.CharField(max_length=100)
 
 class InvestmentSecurity(models.Model):
@@ -56,7 +56,7 @@ class InvestmentSecurity(models.Model):
 class InvestmentHolding(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE)
     holding_id = models.CharField(max_length=100)
-    security_id = models.ForeignKey(InvestmentSecurity, on_delete=models.CASCADE)
+    security = models.ForeignKey(InvestmentSecurity, on_delete=models.CASCADE)
     price = models.FloatField()
     price_as_of = models.DateField()
     cost_basis = models.FloatField()

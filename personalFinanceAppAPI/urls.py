@@ -1,5 +1,5 @@
 from django.urls import path, include
-from .views import UserViewSet, create_plaid_link_token, exchange_public_token, get_accounts_from_plaid, get_accounts_from_db, get_transactions_from_plaid
+from .views import UserViewSet, create_plaid_link_token, exchange_public_token, get_accounts_from_plaid, get_accounts_from_db, get_transactions_from_plaid, get_transactions_from_db, get_transaction_categories_from_db
 from rest_framework.routers import DefaultRouter
 
 ## View imports depending on method
@@ -15,7 +15,10 @@ urlpatterns = [
     path('api/set_access_token/', exchange_public_token),
     path('api/get_accounts_from_plaid', get_accounts_from_plaid),
     path('api/get_accounts_from_db', get_accounts_from_db),
-    path('api/get_transactions_from_plaid', get_transactions_from_plaid)
+    path('api/get_transactions_from_plaid', get_transactions_from_plaid),
+    path('api/get_transactions_from_db', get_transactions_from_db),
+    path('api/get_transaction_categories_from_db', get_transaction_categories_from_db)
+
 
 
 
