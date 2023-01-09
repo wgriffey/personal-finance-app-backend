@@ -64,7 +64,12 @@ def clean_transaction_data(transactions):
         data['date'] = tran['date']
         data['name'] = tran['name']
         data['payment_channel'] = tran['payment_channel']
-        data['category'] = tran['category']
+        data['primary_category'] = tran['category'][0]
+        if len(tran['category']) > 1:
+            data['detailed_category'] = tran['category'][1]
+        else:
+            data['detailed_category'] = ''
+
 
         transaction_data.append(data)
     print(f'CLEANED TRANSACTION DATA: {transaction_data}')

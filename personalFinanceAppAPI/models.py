@@ -40,13 +40,11 @@ class Transaction(models.Model):
     date = models.DateField()
     name = models.CharField(max_length=100)
     payment_channel = models.CharField(max_length=100)
+    primary_category = models.CharField(max_length=100)
+    detailed_category = models.CharField(max_length=100, blank=True)
 
     def __str__(self):
         return self.transaction_id
-
-class TransactionCategory(models.Model):
-    transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE)
-    category = models.CharField(max_length=100)
 
 class InvestmentSecurity(models.Model):
     security_id = models.CharField(max_length=100)

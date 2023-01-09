@@ -1,7 +1,7 @@
 from authuser.models import User
 from rest_framework import serializers
 from rest_framework.authtoken.views import Token
-from .models import Account, Transaction, InvestmentHolding, InvestmentSecurity, TransactionCategory
+from .models import Account, Transaction, InvestmentHolding, InvestmentSecurity
 
 # class ArticleSerializer(serializers.ModelSerializer):
 #     class Meta:
@@ -38,12 +38,7 @@ class AccountSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = ['account', 'transaction_id' ,'amount', 'date', 'name', 'payment_channel']
-
-class TransactionCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TransactionCategory
-        fields = ['transaction', 'category']
+        fields = ['account', 'transaction_id' ,'amount', 'date', 'name', 'payment_channel', 'primary_category', 'detailed_category']
 
 class InvestmentHoldingSerializer(serializers.ModelSerializer):
     class Meta:

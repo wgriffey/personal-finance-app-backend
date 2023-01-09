@@ -11,8 +11,8 @@ from rest_framework.response import Response
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.views import Token
 from rest_framework.permissions import IsAuthenticated
-from .models import Item, Account, Transaction, TransactionCategory
-from .serializers import TransactionCategorySerializer, UserSerializer, AccountSerializer, TransactionSerializer
+from .models import Item, Account, Transaction
+from .serializers import UserSerializer, AccountSerializer, TransactionSerializer
 from .permissions import IsCreationOrIsAuthenticated
 from .utils import clean_accounts_data, clean_transaction_data, remove_duplicate_accounts, remove_duplicate_transactions, remove_duplicate_user_items
 from plaid import Configuration, Environment, ApiClient, ApiException
@@ -216,24 +216,7 @@ def get_transactions_from_plaid(request):
     serializer.is_valid(raise_exception=True)
     serializer.save()
 
-    for tran in transactions:
-        if not len(tran['category']) == 0:
-            for cat in tran['category']:
-                request = {
-                    "transaction": Transaction.objects.filter(transaction_id=tran['transaction_id'])[0].pk,
-                    "category": cat
-                }
-                post_transaction_category(request)
-
     return Response(serializer.data, status= status.HTTP_200_OK)
-
-def post_transaction_category(request):
-    print(f'CATEGORIES REQUEST: {request}')
-    serializer = TransactionCategorySerializer(data=request)
-    serializer.is_valid(raise_exception=True)
-    serializer.save()
-
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 @api_view(['GET'])
 @authentication_classes([TokenAuthentication,])
@@ -251,20 +234,6 @@ def get_transactions_from_db(request):
     transactions_list = list(transactions.values())
 
     return Response(transactions_list, status=status.HTTP_200_OK)
-
-@api_view(['GET'])
-@authentication_classes([TokenAuthentication,])
-@permission_classes([IsCreationOrIsAuthenticated])
-def get_transaction_categories_from_db(request):
-    print(f'REQUEST FROM GET TRANSACTION CATEGORIES: {str(request.data)}')
-    
-    transaction_categories = TransactionCategory.objects.filter(transaction=request.data['transaction']['id'])
-
-    category_list = list(transaction_categories.values())
-
-    print(f'Category List: {category_list}')
-
-    return Response(category_list, status=status.HTTP_200_OK)
 
 '''
 class ArticleViewSet(viewsets.ModelViewSet):
