@@ -76,6 +76,59 @@ def clean_transaction_data(transactions):
 
     return transaction_data
 
+def clean_investment_data(holdings, securities):
+    investment_holdings_data = []
+    investment_securities_data = []
+
+    for h in holdings:
+        holdings_data = {}
+        holdings_data['account'] = Account.objects.filter(account_id = h['account_id'])[0].pk
+        
+        if not 'security_id' in h or h['security_id'] is None:
+            h['security_id'] = ''
+        
+        if not 'institution_price' in h or h['institution_price'] is None:
+            h['institution_price'] = 0
+        
+        if not 'institution_price_as_of' in h or h['institution_price_as_of'] is None:
+            h['institution_price_as_of'] = datetime.now().date()
+
+        if not 'cost_basis' in h or h['cost_basis'] is None:
+            h['cost_basis'] = 0
+
+        if not 'quantity' in h or h['quantity'] is None:
+            h['quantity'] = 0
+        
+        holdings_data['security_id'] = h['security_id']
+        print(holdings_data['security_id'])
+        holdings_data['price'] = h['institution_price']
+        holdings_data['price_as_of'] = h['institution_price_as_of']
+        holdings_data['cost_basis'] = h['cost_basis']
+        holdings_data['quantity'] = h['quantity']
+
+        investment_holdings_data.append(holdings_data)
+    
+    for s in securities:
+        securities_data = {}
+
+        if not 'security_id' in s or s['security_id'] is None:
+            s['security_id'] = ''
+        
+        if not 'name' in s or s['name'] is None:
+            s['name'] = ''
+
+        if not 'ticker_symbol' in s or s['ticker_symbol'] is None:
+            s['ticker_symbol'] = ''
+
+        securities_data['security_id'] = s['security_id']
+        securities_data['name'] = s['name']
+        securities_data['ticker'] = s['ticker_symbol']
+
+        investment_securities_data.append(securities_data)
+    
+    return investment_holdings_data, investment_securities_data
+
+
 def remove_duplicate_accounts(accounts):
     for account in accounts:
         try:

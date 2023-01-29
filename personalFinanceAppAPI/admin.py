@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Account, Transaction, Item
+from .models import Account, InvestmentHolding, InvestmentSecurity, Transaction, Item
 
 # Register your models here.
 
@@ -18,4 +18,14 @@ class TransactionModel(admin.ModelAdmin):
 class ItemModel(admin.ModelAdmin):
     list_filter = ('item_id', 'user')
     list_display = ('item_id', 'user', 'access_token')
+
+@admin.register(InvestmentHolding)
+class InvestmentHoldingModel(admin.ModelAdmin):
+    list_filter = ('account', 'price')
+    list_display = ('account', 'price', 'price_as_of', 'cost_basis', 'quantity')
+
+@admin.register(InvestmentSecurity)
+class InvestmentSecurityModel(admin.ModelAdmin):
+    list_filter = ('security_id', 'name')
+    list_display = ('security_id', 'name', 'ticker')
 

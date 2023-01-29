@@ -11,10 +11,10 @@ from rest_framework.response import Response
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.views import Token
 from rest_framework.permissions import IsAuthenticated
-from .models import Item, Account, Transaction
-from .serializers import UserSerializer, AccountSerializer, TransactionSerializer
+from .models import InvestmentHolding, InvestmentSecurity, Item, Account, Transaction
+from .serializers import InvestmentHoldingSerializer, InvestmentSecuritySerializer, UserSerializer, AccountSerializer, TransactionSerializer
 from .permissions import IsCreationOrIsAuthenticated
-from .utils import clean_accounts_data, clean_transaction_data, remove_duplicate_accounts, remove_duplicate_transactions, remove_duplicate_user_items
+from .utils import clean_accounts_data, clean_investment_data, clean_transaction_data, remove_duplicate_accounts, remove_duplicate_transactions, remove_duplicate_user_items
 from plaid import Configuration, Environment, ApiClient, ApiException
 from plaid.api import plaid_api
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
@@ -179,13 +179,17 @@ def get_transactions_from_plaid(request):
     item = Item.objects.filter(user=request.user)
     access_token = item[0].access_token
 
-    start_dt = (datetime.now() - timedelta(days=30)).date()
-    end_dt = datetime.now().date()
+    start_date = (datetime.now() - timedelta(days=30)).date()
+    end_date = datetime.now().date()
+
+    if request.data['start_date'] and request.data['end_date']:
+        start_date = request.data['start_date']
+        end_date = request.data['end_date']
     
     request = TransactionsGetRequest(
         access_token=access_token,
-        start_date=start_dt,
-        end_date=end_dt,
+        start_date=start_date,
+        end_date=end_date,
         options=TransactionsGetRequestOptions()
     )
 
@@ -220,6 +224,60 @@ def get_transactions_from_db(request):
     transactions_list = list(transactions.values())
 
     return Response(transactions_list, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication,])
+@permission_classes([IsCreationOrIsAuthenticated])
+def get_investments_from_plaid(request):
+    item = Item.objects.filter(user=request.user)
+    access_token = item[0].access_token
+    
+    request = InvestmentsHoldingsGetRequest(
+        access_token=access_token,
+    )
+
+    response = client.investments_holdings_get(request)
+
+    print('INVESTMENTS: ' + str(response))
+
+    investment_holdings, investment_securities = clean_investment_data(response['holdings'], response['securities'])
+
+    holdings_serializer = InvestmentHoldingSerializer(data=investment_holdings, many=True)         
+    securities_serializer = InvestmentSecuritySerializer(data=investment_securities, many=True)
+
+    ##TODO: Implement Remove Duplciates For Holdings and Securities
+    # remove_duplicate_securities(investment_securities)
+    # remove_duplicate_holdings(investment_holdings)
+
+    securities_serializer.is_valid(raise_exception=True)
+    securities_serializer.save()
+
+    holdings_serializer.is_valid(raise_exception=True)
+    holdings_serializer.save()
+
+    return Response([holdings_serializer.data, securities_serializer.data], status= status.HTTP_200_OK)
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication,])
+@permission_classes([IsCreationOrIsAuthenticated])
+def get_investments_from_db(request):
+    item = Item.objects.filter(user = request.user)
+
+    dbAccounts = Account.objects.filter(item_id=item[0].id)
+
+    account_id_list = []
+    for acc in dbAccounts:
+        account_id_list.append(acc.pk)
+    
+    investment_holdings = InvestmentHolding.objects.filter(account__in=account_id_list)
+    holdings_list = list(investment_holdings.values())
+
+    investment_securities = []
+
+    for holding in holdings_list:
+        investment_securities.append(InvestmentSecurity.objects.filter(security_id=holding['security_id']))
+
+    return Response([investment_holdings, investment_securities], status=status.HTTP_200_OK)
 
 '''
 class ArticleViewSet(viewsets.ModelViewSet):

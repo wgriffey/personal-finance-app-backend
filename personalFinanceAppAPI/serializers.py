@@ -42,7 +42,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 class InvestmentHoldingSerializer(serializers.ModelSerializer):
     class Meta:
         model = InvestmentHolding
-        fields = ['account', 'holding_id', 'security_id', 'price', 'price_as_of', 'cost_basis', 'quantity']
+        fields = ['account', 'security_id', 'price', 'price_as_of', 'cost_basis', 'quantity']
 
 class InvestmentSecuritySerializer(serializers.ModelSerializer):
     class Meta:
