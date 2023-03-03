@@ -1,4 +1,4 @@
-from .models import Account, Item, Transaction
+from .models import Account, InvestmentHolding, InvestmentSecurity, Item, Transaction
 from datetime import datetime
 
 def clean_accounts_data(item_id, accounts):
@@ -144,10 +144,27 @@ def remove_duplicate_transactions(transactions):
         try:
             dbTransaction = Transaction.objects.filter(transaction_id = tran['transaction_id']).delete()
         except:
-            dbTransaction = 'No Item For User Found'
+            dbTransaction = 'No Transaction Found'
     return dbTransaction
-    
 
+
+def remove_duplicate_securities(securities):
+    for sec in securities:
+        try:
+            dbSecurity = InvestmentSecurity.objects.filter(security_id = sec['security_id']).delete()
+        except:
+            dbSecurity = 'No Transaction Found'
+    return dbSecurity
+
+def remove_duplicate_holdings(holdings):
+    for hol in holdings:
+        try:
+            dbHolding = InvestmentHolding.objects.filter(security_id = hol['security_id']).delete()
+        except:
+            dbHolding = 'No Transaction Found'
+    return dbHolding
+
+    
 def remove_duplicate_user_items(user):
     try:
         item = Item.objects.filter(user = user).delete()

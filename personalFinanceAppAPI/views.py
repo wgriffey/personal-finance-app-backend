@@ -14,7 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import InvestmentHolding, InvestmentSecurity, Item, Account, Transaction
 from .serializers import InvestmentHoldingSerializer, InvestmentSecuritySerializer, UserSerializer, AccountSerializer, TransactionSerializer
 from .permissions import IsCreationOrIsAuthenticated
-from .utils import clean_accounts_data, clean_investment_data, clean_transaction_data, remove_duplicate_accounts, remove_duplicate_transactions, remove_duplicate_user_items
+from .utils import clean_accounts_data, clean_investment_data, clean_transaction_data, remove_duplicate_accounts, remove_duplicate_holdings, remove_duplicate_securities, remove_duplicate_transactions, remove_duplicate_user_items
 from plaid import Configuration, Environment, ApiClient, ApiException
 from plaid.api import plaid_api
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
@@ -26,10 +26,10 @@ from plaid.model.accounts_get_request import AccountsGetRequest
 from plaid.model.transactions_get_request import TransactionsGetRequest
 from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.model.investments_holdings_get_request import InvestmentsHoldingsGetRequest
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 import os
 
-load_dotenv()
+load_dotenv('.env.sandbox')
 
 host = Environment.Sandbox
 
@@ -182,7 +182,7 @@ def get_transactions_from_plaid(request):
     start_date = (datetime.now() - timedelta(days=30)).date()
     end_date = datetime.now().date()
 
-    if request.data['start_date'] and request.data['end_date']:
+    if ('start_date' in request.data and request.data['start_date'] is not None) and ('end_date' in request.data and request.data['end_date'] is not None):
         start_date = request.data['start_date']
         end_date = request.data['end_date']
     
@@ -238,16 +238,13 @@ def get_investments_from_plaid(request):
 
     response = client.investments_holdings_get(request)
 
-    print('INVESTMENTS: ' + str(response))
-
     investment_holdings, investment_securities = clean_investment_data(response['holdings'], response['securities'])
 
     holdings_serializer = InvestmentHoldingSerializer(data=investment_holdings, many=True)         
     securities_serializer = InvestmentSecuritySerializer(data=investment_securities, many=True)
 
-    ##TODO: Implement Remove Duplciates For Holdings and Securities
-    # remove_duplicate_securities(investment_securities)
-    # remove_duplicate_holdings(investment_holdings)
+    remove_duplicate_securities(investment_securities)
+    remove_duplicate_holdings(investment_holdings)
 
     securities_serializer.is_valid(raise_exception=True)
     securities_serializer.save()
@@ -272,12 +269,14 @@ def get_investments_from_db(request):
     investment_holdings = InvestmentHolding.objects.filter(account__in=account_id_list)
     holdings_list = list(investment_holdings.values())
 
-    investment_securities = []
-
+    holdings_security_ids = []
     for holding in holdings_list:
-        investment_securities.append(InvestmentSecurity.objects.filter(security_id=holding['security_id']))
+        holdings_security_ids.append(holding['security_id'])
+    
+    investment_securities = InvestmentSecurity.objects.filter(security_id__in=holdings_security_ids)
+    securities_list = list(investment_securities.values())
 
-    return Response([investment_holdings, investment_securities], status=status.HTTP_200_OK)
+    return Response([holdings_list, securities_list], status=status.HTTP_200_OK)
 
 '''
 class ArticleViewSet(viewsets.ModelViewSet):
