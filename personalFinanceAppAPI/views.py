@@ -126,6 +126,7 @@ def get_accounts_from_plaid(request):
     
     item = Item.objects.filter(user=request.user)
     access_token = item[0].access_token
+    accesskdnd
 
     print(f'Item: {item} Access Token: {access_token}')
     
