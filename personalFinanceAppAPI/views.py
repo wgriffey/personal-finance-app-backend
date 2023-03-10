@@ -29,7 +29,7 @@ from plaid.model.investments_holdings_get_request import InvestmentsHoldingsGetR
 from dotenv import load_dotenv, find_dotenv
 import os
 
-load_dotenv('.env.sandbox')
+load_dotenv('./env/.env.sandbox')
 
 host = Environment.Sandbox
 
