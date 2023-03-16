@@ -56,225 +56,225 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = (TokenAuthentication,)
 
-## Create Plaid Link Token
-@api_view(['POST'])
-@authentication_classes([TokenAuthentication,])
-@permission_classes([IsCreationOrIsAuthenticated])
-@ensure_csrf_cookie
-def create_plaid_link_token(request):
-    user = request.user
-    client_user_id = str(user.id)
+class PlaidLinkToken(APIView):
+    permission_classes = [IsCreationOrIsAuthenticated]
+    authentication_classes = [TokenAuthentication]
 
-    # Create a link_token for the given user
-    request = LinkTokenCreateRequest(
-        products=[Products("transactions")],
-        client_name="G&E Personal Finance",
-        country_codes=[CountryCode('US')],
-        redirect_uri='http://localhost:3000/',
-        language='en',
-        webhook='https://webhook.example.com',
-        user=LinkTokenCreateRequestUser(
-            client_user_id=client_user_id
+    def post(self, request):
+        user = request.user
+
+        # Create a link_token for the given user
+        request = LinkTokenCreateRequest(
+            products=[Products("transactions")],
+            client_name="G&E Personal Finance",
+            country_codes=[CountryCode('US')],
+            redirect_uri='http://localhost:3000/',
+            language='en',
+            webhook='https://webhook.example.com',
+            user=LinkTokenCreateRequestUser(
+                client_user_id=str(user.id)
+            )
         )
-    )
-    response = client.link_token_create(request)
-    # Send the data to the client
-    return JsonResponse(response.to_dict())
+        response = client.link_token_create(request)
+        # Send the data to the client
+        return JsonResponse(response.to_dict())
+
 
 ## Exchange Public Token for Access Token
-@api_view(['POST'])
-@authentication_classes([TokenAuthentication,])
-@permission_classes([IsCreationOrIsAuthenticated])
-@ensure_csrf_cookie
-def exchange_public_token(request):
-    global access_token
-    global item_id
+class PublicTokenExchange(APIView):
+    permission_classes = [IsCreationOrIsAuthenticated]
+    authentication_classes = [TokenAuthentication]
 
-    user = request.user
+    def post(self, request):
+        user = request.user
 
-    ## Remove Existing Item For User So that Updated Item is Added
-    remove_duplicate_user_items(user = user)
+        ## Remove Existing Item For User So that Updated Item is Added
+        remove_duplicate_user_items(user = user)
 
-    public_token = request.data['public_token']
-    request = ItemPublicTokenExchangeRequest(
-      public_token=public_token
-    )
-    response = client.item_public_token_exchange(request)
-    
-    access_token = response['access_token']
-    item_id = response['item_id']
-    
-    # Save Item to Database
-    item = Item.objects.create(user = user, item_id = item_id, access_token = access_token)
-    item.save()
-    
-    data = {
-        "access_token": access_token,
-        "item_id": item_id
-    }
-
-    print('Access Token and Item ID' + str(data))
-
-    return JsonResponse(data, status = status.HTTP_201_CREATED)
-
-## Get Accounts From Plaid API and Save to DB
-@api_view(['GET'])
-@authentication_classes([TokenAuthentication,])
-@permission_classes([IsCreationOrIsAuthenticated])
-def get_accounts_from_plaid(request):
-    global access_token
-    
-    item = Item.objects.filter(user=request.user)
-    access_token = item[0].access_token
-    
-    try:
-        request = AccountsGetRequest(
-            access_token=access_token
+        public_token = request.data['public_token']
+        request = ItemPublicTokenExchangeRequest(
+        public_token=public_token
         )
-        accounts_response = client.accounts_get(request)
-        print('INITIAL ACCOUNTS DATA: ' + str(accounts_response))
-
-        # Clean the Account Data and Save to DB
-        accounts = clean_accounts_data(item[0].pk, accounts_response['accounts']) 
+        response = client.item_public_token_exchange(request)
         
-        # Save Account Data to DB
-        serializer = AccountSerializer(data=accounts, many=True)
-
-        # Ensure that there aren't duplicate accounts
-        remove_duplicate_accounts(accounts=accounts)
+        access_token = response['access_token']
+        item_id = response['item_id']
         
+        # Save Item to Database
+        item = Item.objects.create(user = user, item_id = item_id, access_token = access_token)
+        item.save()
+        
+        data = {
+            "access_token": access_token,
+            "item_id": item_id
+        }
+
+        print('Access Token and Item ID' + str(data))
+
+        return JsonResponse(data, status = status.HTTP_201_CREATED)
+    
+## Get Accounts From Plaid
+class GetAccountsPlaid(APIView):
+    permission_classes = [IsCreationOrIsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request):        
+        item = Item.objects.filter(user=request.user)
+        access_token = item[0].access_token
+        
+        try:
+            request = AccountsGetRequest(
+                access_token=access_token
+            )
+            accounts_response = client.accounts_get(request)
+            print('INITIAL ACCOUNTS DATA: ' + str(accounts_response))
+
+            # Clean the Account Data and Save to DB
+            accounts = clean_accounts_data(item[0].pk, accounts_response['accounts']) 
+            
+            # Save Account Data to DB
+            serializer = AccountSerializer(data=accounts, many=True)
+
+            # Ensure that there aren't duplicate accounts
+            remove_duplicate_accounts(accounts=accounts)
+            
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(serializer.data, status = status.HTTP_200_OK)    
+
+
+        except ApiException as e:
+            response = JSONParser(e.body)
+            return JsonResponse({'error': {'status_code': e.status, 'display_message':
+                            response['error_message'], 'error_code': response['error_code'], 'error_type': response['error_type']}})
+
+## Get Accounts From DB
+class GetAccountsDB(APIView):
+    permission_classes = [IsCreationOrIsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request):
+        item = Item.objects.filter(user = request.user)
+
+        dbAccounts = Account.objects.filter(item_id=item[0].id)
+
+        accounts = list(dbAccounts.values())
+
+        return Response(accounts, status=status.HTTP_200_OK)
+
+## Get Transactions From Plaid
+class GetTransactionsPlaid(APIView):
+    permission_classes = [IsCreationOrIsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+
+    def get(self, request):
+        item = Item.objects.filter(user=request.user)
+        access_token = item[0].access_token
+
+        start_date = (datetime.now() - timedelta(days=30)).date()
+        end_date = datetime.now().date()
+
+        if ('start_date' in request.data and request.data['start_date'] is not None) and ('end_date' in request.data and request.data['end_date'] is not None):
+            start_date = request.data['start_date']
+            end_date = request.data['end_date']
+        
+        request = TransactionsGetRequest(
+            access_token=access_token,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        response = client.transactions_get(request)
+
+        print('TRANSACTIONS: ' + str(response))
+
+        transactions = clean_transaction_data(response['transactions'])
+                    
+        serializer = TransactionSerializer(data=transactions, many=True)
+
+        remove_duplicate_transactions(transactions)
+
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        return Response(serializer.data, status = status.HTTP_200_OK)    
+        return Response(serializer.data, status= status.HTTP_200_OK)
 
+## Get Transactions From DB
+class GetTransactionsDB(APIView):
+    permission_classes = [IsCreationOrIsAuthenticated]
+    authentication_classes = [TokenAuthentication]
 
-    except ApiException as e:
-        response = JSONParser(e.body)
-        return JsonResponse({'error': {'status_code': e.status, 'display_message':
-                        response['error_message'], 'error_code': response['error_code'], 'error_type': response['error_type']}})
+    def get(self, request):
+        item = Item.objects.filter(user = request.user)
 
-## Get Accounts From DB
-@api_view(['GET'])
-@authentication_classes([TokenAuthentication,])
-@permission_classes([IsCreationOrIsAuthenticated])
-def get_accounts_from_db(request):
+        dbAccounts = Account.objects.filter(item_id=item[0].id)
+
+        account_id_list = []
+        for acc in dbAccounts:
+            account_id_list.append(acc.pk)
+        
+        transactions = Transaction.objects.filter(account__in=account_id_list)
+        transactions_list = list(transactions.values())
+
+        return Response(transactions_list, status=status.HTTP_200_OK)
     
-    item = Item.objects.filter(user = request.user)
+## Get Investment Data From Plaid
+class GetInvestmentsPlaid(APIView):
+    permission_classes = [IsCreationOrIsAuthenticated]
+    authentication_classes = [TokenAuthentication]
 
-    dbAccounts = Account.objects.filter(item_id=item[0].id)
+    def get(self, request):
+        item = Item.objects.filter(user=request.user)
+        access_token = item[0].access_token
+        
+        request = InvestmentsHoldingsGetRequest(
+            access_token=access_token,
+        )
 
-    accounts = list(dbAccounts.values())
+        response = client.investments_holdings_get(request)
 
-    print(f'ACCOUNTS: {accounts}')
+        investment_holdings, investment_securities = clean_investment_data(response['holdings'], response['securities'])
 
-    return Response(accounts, status=status.HTTP_200_OK)
+        holdings_serializer = InvestmentHoldingSerializer(data=investment_holdings, many=True)         
+        securities_serializer = InvestmentSecuritySerializer(data=investment_securities, many=True)
 
-@api_view(['GET'])
-@authentication_classes([TokenAuthentication,])
-@permission_classes([IsCreationOrIsAuthenticated])
-def get_transactions_from_plaid(request):
-    item = Item.objects.filter(user=request.user)
-    access_token = item[0].access_token
+        remove_duplicate_securities(investment_securities)
+        remove_duplicate_holdings(investment_holdings)
 
-    start_date = (datetime.now() - timedelta(days=30)).date()
-    end_date = datetime.now().date()
+        securities_serializer.is_valid(raise_exception=True)
+        securities_serializer.save()
 
-    if ('start_date' in request.data and request.data['start_date'] is not None) and ('end_date' in request.data and request.data['end_date'] is not None):
-        start_date = request.data['start_date']
-        end_date = request.data['end_date']
+        holdings_serializer.is_valid(raise_exception=True)
+        holdings_serializer.save()
+
+        return Response([holdings_serializer.data, securities_serializer.data], status= status.HTTP_200_OK)
     
-    request = TransactionsGetRequest(
-        access_token=access_token,
-        start_date=start_date,
-        end_date=end_date,
-        options=TransactionsGetRequestOptions()
-    )
+## Get Investment Data From DB
+class GetInvestmentsDB(APIView):
+    permission_classes = [IsCreationOrIsAuthenticated]
+    authentication_classes = [TokenAuthentication]
 
-    response = client.transactions_get(request)
+    def get(self, request):
+        item = Item.objects.filter(user = request.user)
 
-    print('TRANSACTIONS: ' + str(response))
+        dbAccounts = Account.objects.filter(item_id=item[0].id)
 
-    transactions = clean_transaction_data(response['transactions'])
-                
-    serializer = TransactionSerializer(data=transactions, many=True)
+        account_id_list = []
+        for acc in dbAccounts:
+            account_id_list.append(acc.pk)
+        
+        investment_holdings = InvestmentHolding.objects.filter(account__in=account_id_list)
+        holdings_list = list(investment_holdings.values())
 
-    remove_duplicate_transactions(transactions)
+        holdings_security_ids = []
+        for holding in holdings_list:
+            holdings_security_ids.append(holding['security_id'])
+        
+        investment_securities = InvestmentSecurity.objects.filter(security_id__in=holdings_security_ids)
+        securities_list = list(investment_securities.values())
 
-    serializer.is_valid(raise_exception=True)
-    serializer.save()
-
-    return Response(serializer.data, status= status.HTTP_200_OK)
-
-@api_view(['GET'])
-@authentication_classes([TokenAuthentication,])
-@permission_classes([IsCreationOrIsAuthenticated])
-def get_transactions_from_db(request):
-    item = Item.objects.filter(user = request.user)
-
-    dbAccounts = Account.objects.filter(item_id=item[0].id)
-
-    account_id_list = []
-    for acc in dbAccounts:
-        account_id_list.append(acc.pk)
-    
-    transactions = Transaction.objects.filter(account__in=account_id_list)
-    transactions_list = list(transactions.values())
-
-    return Response(transactions_list, status=status.HTTP_200_OK)
-
-@api_view(['GET'])
-@authentication_classes([TokenAuthentication,])
-@permission_classes([IsCreationOrIsAuthenticated])
-def get_investments_from_plaid(request):
-    item = Item.objects.filter(user=request.user)
-    access_token = item[0].access_token
-    
-    request = InvestmentsHoldingsGetRequest(
-        access_token=access_token,
-    )
-
-    response = client.investments_holdings_get(request)
-
-    investment_holdings, investment_securities = clean_investment_data(response['holdings'], response['securities'])
-
-    holdings_serializer = InvestmentHoldingSerializer(data=investment_holdings, many=True)         
-    securities_serializer = InvestmentSecuritySerializer(data=investment_securities, many=True)
-
-    remove_duplicate_securities(investment_securities)
-    remove_duplicate_holdings(investment_holdings)
-
-    securities_serializer.is_valid(raise_exception=True)
-    securities_serializer.save()
-
-    holdings_serializer.is_valid(raise_exception=True)
-    holdings_serializer.save()
-
-    return Response([holdings_serializer.data, securities_serializer.data], status= status.HTTP_200_OK)
-
-@api_view(['GET'])
-@authentication_classes([TokenAuthentication,])
-@permission_classes([IsCreationOrIsAuthenticated])
-def get_investments_from_db(request):
-    item = Item.objects.filter(user = request.user)
-
-    dbAccounts = Account.objects.filter(item_id=item[0].id)
-
-    account_id_list = []
-    for acc in dbAccounts:
-        account_id_list.append(acc.pk)
-    
-    investment_holdings = InvestmentHolding.objects.filter(account__in=account_id_list)
-    holdings_list = list(investment_holdings.values())
-
-    holdings_security_ids = []
-    for holding in holdings_list:
-        holdings_security_ids.append(holding['security_id'])
-    
-    investment_securities = InvestmentSecurity.objects.filter(security_id__in=holdings_security_ids)
-    securities_list = list(investment_securities.values())
-
-    return Response([holdings_list, securities_list], status=status.HTTP_200_OK)
+        return Response([holdings_list, securities_list], status=status.HTTP_200_OK)
 
 '''
 class ArticleViewSet(viewsets.ModelViewSet):

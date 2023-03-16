@@ -1,5 +1,5 @@
 from django.urls import path, include
-from .views import UserViewSet, create_plaid_link_token, exchange_public_token, get_accounts_from_plaid, get_accounts_from_db, get_transactions_from_plaid, get_transactions_from_db, get_investments_from_plaid, get_investments_from_db
+from .views import UserViewSet, PlaidLinkToken, PublicTokenExchange, GetAccountsPlaid, GetAccountsDB, GetTransactionsPlaid, GetTransactionsDB, GetInvestmentsPlaid, GetInvestmentsDB
 from rest_framework.routers import DefaultRouter
 
 ## View imports depending on method
@@ -11,14 +11,14 @@ router.register(r'users', UserViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),
-    path('api/create_link_token/', create_plaid_link_token),
-    path('api/set_access_token/', exchange_public_token),
-    path('api/get_accounts_from_plaid', get_accounts_from_plaid),
-    path('api/get_accounts_from_db', get_accounts_from_db),
-    path('api/get_transactions_from_plaid', get_transactions_from_plaid),
-    path('api/get_transactions_from_db', get_transactions_from_db),
-    path('api/get_investments_from_plaid', get_investments_from_plaid),
-    path('api/get_investments_from_db', get_investments_from_db)
+    path('api/create_link_token/', PlaidLinkToken.as_view()),
+    path('api/set_access_token/', PublicTokenExchange.as_view()),
+    path('api/get_accounts_from_plaid', GetAccountsPlaid.as_view()),
+    path('api/get_accounts_from_db', GetAccountsDB.as_view()),
+    path('api/get_transactions_from_plaid', GetTransactionsPlaid.as_view()),
+    path('api/get_transactions_from_db', GetTransactionsDB.as_view()),
+    path('api/get_investments_from_plaid', GetInvestmentsPlaid.as_view()),
+    path('api/get_investments_from_db', GetInvestmentsDB.as_view())
 
     #paths for class based views
     # path('articles/', ArticleList.as_view()),
