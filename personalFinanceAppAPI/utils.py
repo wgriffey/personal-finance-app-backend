@@ -123,38 +123,3 @@ def clean_investment_data(holdings, securities):
     return investment_data
 
 
-def remove_duplicate_accounts(accounts):
-    for account in accounts:
-        try:
-            dbAccount = Account.objects.get(account_id=account['account_id'])
-        except:
-            dbAccount = None
-        if not dbAccount is None:
-            Account.objects.get(account_id=account['account_id']).delete()
-
-
-def remove_duplicate_transactions(transactions):
-    for tran in transactions:
-        try:
-            dbTransaction = Transaction.objects.filter(transaction_id = tran['transaction_id']).delete()
-        except:
-            dbTransaction = 'No Transaction Found'
-    return dbTransaction
-
-def remove_duplicate_investments(investments):
-    for inv in investments:
-        try:
-            dbInvestment = Investment.objects.filter(security_id = inv['security_id']).delete()
-        except:
-            dbInvestment = 'No Transaction Found'
-    return dbInvestment
-
-    
-def remove_duplicate_user_items(user):
-    try:
-        item = Item.objects.filter(user = user).delete()
-    except:
-        item = 'No Item For User Found'
-    
-    return item
-

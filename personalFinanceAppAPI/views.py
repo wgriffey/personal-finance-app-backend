@@ -15,7 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Investment, Item, Account, Transaction
 from .serializers import InvestmentSerializer, UserSerializer, AccountSerializer, TransactionSerializer
 from .permissions import IsCreationOrIsAuthenticated
-from .utils import clean_accounts_data, clean_investment_data, clean_transaction_data, remove_duplicate_accounts, remove_duplicate_investments, remove_duplicate_transactions, remove_duplicate_user_items
+from .utils import clean_accounts_data, clean_investment_data, clean_transaction_data
 from plaid import Configuration, Environment, ApiClient, ApiException
 from plaid.api import plaid_api
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
@@ -87,9 +87,6 @@ class PublicTokenExchange(APIView):
 
     def post(self, request):
         user = request.user
-
-        ## Remove Existing Item For User So that Updated Item is Added
-        # remove_duplicate_user_items(user = user)
 
         public_token = request.data['public_token']
         
@@ -198,7 +195,6 @@ class AccountDetailsDB(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)        
 
 
-## Save All Transactions From Plaid
 class TransactionListPlaid(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
@@ -246,7 +242,6 @@ class TransactionListPlaid(APIView):
             
         return Response(transactions_dict, status= status.HTTP_200_OK)
 
-## Get All Transactions From DB
 class TransactionListDB(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
@@ -266,7 +261,6 @@ class TransactionListDB(APIView):
 
         return Response(transactions, status=status.HTTP_200_OK)
     
-## Save Investment Data From Plaid
 class InvestmentListPlaid(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
@@ -288,7 +282,7 @@ class InvestmentListPlaid(APIView):
             ## Clean Investment Data
             investment_data = clean_investment_data(response['holdings'], response['securities'])
 
-            #Skip Existing Invetsment Accounts
+            #Skip Existing Investment Accounts
             dbAccounts = Account.objects.filter(item_id=item.id)
             account_id_list = [acc.id for acc in dbAccounts]
             account_security_found = False
@@ -314,7 +308,6 @@ class InvestmentListPlaid(APIView):
 
         return Response(investment_data_dict, status= status.HTTP_200_OK)
     
-## Get All Investment Data From DB
 class InvestmentListDB(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
