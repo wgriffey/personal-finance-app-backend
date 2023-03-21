@@ -1,4 +1,4 @@
-from .models import Account, InvestmentHolding, InvestmentSecurity, Item, Transaction
+from .models import Account, Investment, Item, Transaction
 from datetime import datetime
 
 def clean_accounts_data(item_id, accounts):
@@ -42,14 +42,14 @@ def clean_transaction_data(transactions):
 
     for tran in transactions:
         data = {}
-        data['account'] = Account.objects.filter(account_id = tran['account_id'])[0].pk
+        data['account'] = Account.objects.get(account_id = tran['account_id']).pk
         data['transaction_id'] = tran['transaction_id']
 
         if not 'amount' in tran or tran['amount'] is None:
             tran['amount'] = 0
         
         if not 'date' in tran or tran['date'] is None:
-            tran['date'] = datetime.now()
+            tran['date'] = datetime.now().date()
         
         if not 'name' in tran or tran['name'] is None:
             tran['name'] = ''
@@ -77,12 +77,11 @@ def clean_transaction_data(transactions):
     return transaction_data
 
 def clean_investment_data(holdings, securities):
-    investment_holdings_data = []
-    investment_securities_data = []
+    investment_data = []
 
     for h in holdings:
-        holdings_data = {}
-        holdings_data['account'] = Account.objects.filter(account_id = h['account_id'])[0].pk
+        new_investment_data = {}
+        new_investment_data['account'] = Account.objects.get(account_id = h['account_id']).pk
         
         if not 'security_id' in h or h['security_id'] is None:
             h['security_id'] = ''
@@ -99,34 +98,29 @@ def clean_investment_data(holdings, securities):
         if not 'quantity' in h or h['quantity'] is None:
             h['quantity'] = 0
         
-        holdings_data['security_id'] = h['security_id']
-        print(holdings_data['security_id'])
-        holdings_data['price'] = h['institution_price']
-        holdings_data['price_as_of'] = h['institution_price_as_of']
-        holdings_data['cost_basis'] = h['cost_basis']
-        holdings_data['quantity'] = h['quantity']
-
-        investment_holdings_data.append(holdings_data)
-    
-    for s in securities:
-        securities_data = {}
-
-        if not 'security_id' in s or s['security_id'] is None:
-            s['security_id'] = ''
+        new_investment_data['security_id'] = h['security_id']
         
-        if not 'name' in s or s['name'] is None:
-            s['name'] = ''
+        # Find security name and ticker in list of securities and set the values in our new investment data dict
+        for s in securities:
+            print(s)
+            if s['security_id'] == new_investment_data['security_id']:
+                new_investment_data['security_name'] = s['name']
+                new_investment_data['security_ticker'] = s['ticker_symbol']
+               
+        if new_investment_data['security_name'] is None:
+            new_investment_data['security_name'] = ''
 
-        if not 'ticker_symbol' in s or s['ticker_symbol'] is None:
-            s['ticker_symbol'] = ''
+        if new_investment_data['security_ticker'] is None:
+            new_investment_data['security_ticker'] = ''
 
-        securities_data['security_id'] = s['security_id']
-        securities_data['name'] = s['name']
-        securities_data['ticker'] = s['ticker_symbol']
+        new_investment_data['price'] = h['institution_price']
+        new_investment_data['price_as_of'] = h['institution_price_as_of']
+        new_investment_data['cost_basis'] = h['cost_basis']
+        new_investment_data['quantity'] = h['quantity']
 
-        investment_securities_data.append(securities_data)
+        investment_data.append(new_investment_data)
     
-    return investment_holdings_data, investment_securities_data
+    return investment_data
 
 
 def remove_duplicate_accounts(accounts):
@@ -147,22 +141,13 @@ def remove_duplicate_transactions(transactions):
             dbTransaction = 'No Transaction Found'
     return dbTransaction
 
-
-def remove_duplicate_securities(securities):
-    for sec in securities:
+def remove_duplicate_investments(investments):
+    for inv in investments:
         try:
-            dbSecurity = InvestmentSecurity.objects.filter(security_id = sec['security_id']).delete()
+            dbInvestment = Investment.objects.filter(security_id = inv['security_id']).delete()
         except:
-            dbSecurity = 'No Transaction Found'
-    return dbSecurity
-
-def remove_duplicate_holdings(holdings):
-    for hol in holdings:
-        try:
-            dbHolding = InvestmentHolding.objects.filter(security_id = hol['security_id']).delete()
-        except:
-            dbHolding = 'No Transaction Found'
-    return dbHolding
+            dbInvestment = 'No Transaction Found'
+    return dbInvestment
 
     
 def remove_duplicate_user_items(user):
