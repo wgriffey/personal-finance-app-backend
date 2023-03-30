@@ -1,20 +1,14 @@
 from django.db import models
 from authuser.models import User
 
-
-# Create your models here.
-
-# class Article(models.Model):
-#     title = models.CharField(max_length=100)
-#     description = models.TextField()
-
-#     def __str__(self) -> str:
-#         return super().__str__()
+class Institution(models.Model):
+    institution_id = models.CharField(max_length=100)
+    institution_name = models.CharField(max_length=200)
 
 class Item(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
     item_id = models.CharField(max_length=100)
-    institution_id = models.CharField(max_length=100)
     access_token = models.CharField(max_length=100)
 
     class Meta:
@@ -71,4 +65,5 @@ class Investment(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['account', 'security_id'], name='account_security_unique_constraint')
         ]
+        
 

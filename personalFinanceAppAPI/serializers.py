@@ -1,12 +1,7 @@
 from authuser.models import User
 from rest_framework import serializers
 from rest_framework.authtoken.views import Token
-from .models import Account, Transaction, Investment
-
-# class ArticleSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Article
-#         fields = ['id', 'title', 'description']
+from .models import Account, Transaction, Investment, Institution
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,6 +22,11 @@ class UserSerializer(serializers.ModelSerializer):
             password = validated_data.pop('password', None)
             instance.set_password(password)
         return super().update(instance, validated_data)
+    
+class InstitutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Institution
+        fields = ['institution_id', 'institution_name']
 
 class AccountSerializer(serializers.ModelSerializer):
     class Meta:
