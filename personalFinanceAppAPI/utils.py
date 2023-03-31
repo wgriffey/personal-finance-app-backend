@@ -33,7 +33,6 @@ def clean_accounts_data(item_id, accounts):
         data['account_subtype'] = str(acc['subtype'])
 
         accounts_data.append(data)
-    print(f'CLEANED ACCOUNT DATA: {accounts_data}')
     
     return accounts_data
 
@@ -72,7 +71,6 @@ def clean_transaction_data(transactions):
 
 
         transaction_data.append(data)
-    print(f'CLEANED TRANSACTION DATA: {transaction_data}')
 
     return transaction_data
 
@@ -102,7 +100,6 @@ def clean_investment_data(holdings, securities):
         
         # Find security name and ticker in list of securities and set the values in our new investment data dict
         for s in securities:
-            print(s)
             if s['security_id'] == new_investment_data['security_id']:
                 new_investment_data['security_name'] = s['name']
                 new_investment_data['security_ticker'] = s['ticker_symbol']

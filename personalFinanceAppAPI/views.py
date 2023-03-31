@@ -63,7 +63,7 @@ class PlaidLinkToken(APIView):
 
         # Create a link_token for the given user
         request = LinkTokenCreateRequest(
-            products=[Products("transactions")],
+            products=[Products('transactions')],
             client_name="G&E Personal Finance",
             country_codes=[CountryCode('US')],
             redirect_uri='http://localhost:3000/',
@@ -145,11 +145,8 @@ class InstitutionDetailsDB(APIView):
         item = Item.objects.get(id=account.item.pk)
 
         institution = Institution.objects.get(id=item.institution_id)
-        print(institution)
 
         institution_serializer = InstitutionSerializer(institution)
-
-        print(institution_serializer.data)
 
         return Response(institution_serializer.data, status=status.HTTP_200_OK)        
 
@@ -171,7 +168,6 @@ class AccountListPlaid(APIView):
                     access_token=access_token
                 )
                 accounts_response = client.accounts_get(accounts_request)
-                print('INITIAL ACCOUNTS DATA: ' + str(accounts_response))
             except ApiException as e:
                 response = JSONParser(e.body)
                 return JsonResponse({'error': {'status_code': e.status, 'display_message':
