@@ -1,7 +1,8 @@
-from authuser.models import User
 from rest_framework import serializers
-from rest_framework.authtoken.views import Token
-from .models import Account, Transaction, Investment, Institution
+
+from authuser.models import User
+
+from .models import Account, Institution, Investment, Transaction
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -47,6 +48,7 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = [
+            "id",
             "account",
             "transaction_id",
             "amount",

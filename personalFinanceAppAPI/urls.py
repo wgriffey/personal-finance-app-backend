@@ -1,18 +1,20 @@
-from django.urls import path, include
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
+
 from .views import (
-    UserViewSet,
+    AccountDetailsDB,
+    AccountListDB,
+    AccountListPlaid,
+    InstitutionDetailsDB,
+    InvestmentListDB,
+    InvestmentListPlaid,
     PlaidLinkToken,
     PublicTokenExchange,
-    InstitutionDetailsDB,
-    AccountListPlaid,
-    AccountListDB,
-    AccountDetailsDB,
-    TransactionListPlaid,
+    TransactionDetailsDB,
     TransactionListDB,
-    InvestmentListPlaid,
-    InvestmentListDB,
+    TransactionListPlaid,
+    UserViewSet,
 )
-from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
 router.register(r"users", UserViewSet)
@@ -30,6 +32,7 @@ urlpatterns = [
     path("api/get_account/<int:id>", AccountDetailsDB.as_view()),
     path("api/save_transactions_from_plaid", TransactionListPlaid.as_view()),
     path("api/get_transactions", TransactionListDB.as_view()),
+    path("api/transaction/<int:pk>", TransactionDetailsDB.as_view()),
     path("api/save_investments_from_plaid", InvestmentListPlaid.as_view()),
     path("api/get_investments", InvestmentListDB.as_view()),
 ]

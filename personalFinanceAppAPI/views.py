@@ -19,15 +19,15 @@ from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
 from plaid.model.products import Products
 from plaid.model.transactions_get_request import TransactionsGetRequest
-from rest_framework import status, viewsets
+from rest_framework import generics, status, viewsets
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from authuser.models import User
 
 from .models import Account, Institution, Investment, Item, Transaction
-from .permissions import IsCreationOrIsAuthenticated
 from .serializers import (
     AccountSerializer,
     InstitutionSerializer,
@@ -57,12 +57,10 @@ client = plaid_api.PlaidApi(api_client)
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsCreationOrIsAuthenticated]
-    authentication_classes = (TokenAuthentication,)
 
 
 class PlaidLinkToken(APIView):
-    permission_classes = [IsCreationOrIsAuthenticated]
+    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def post(self, request):
@@ -98,7 +96,7 @@ class PlaidLinkToken(APIView):
 
 
 class PublicTokenExchange(APIView):
-    permission_classes = [IsCreationOrIsAuthenticated]
+    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def post(self, request):
@@ -169,7 +167,7 @@ class PublicTokenExchange(APIView):
 
 
 class InstitutionDetailsDB(APIView):
-    permission_classes = [IsCreationOrIsAuthenticated]
+    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request, account_id):
@@ -185,7 +183,7 @@ class InstitutionDetailsDB(APIView):
 
 
 class AccountListPlaid(APIView):
-    permission_classes = [IsCreationOrIsAuthenticated]
+    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def post(self, request):
@@ -241,7 +239,7 @@ class AccountListPlaid(APIView):
 
 
 class AccountListDB(APIView):
-    permission_classes = [IsCreationOrIsAuthenticated]
+    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):
@@ -259,7 +257,7 @@ class AccountListDB(APIView):
 
 
 class AccountDetailsDB(APIView):
-    permission_classes = [IsCreationOrIsAuthenticated]
+    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request, id):
@@ -272,7 +270,7 @@ class AccountDetailsDB(APIView):
 
 
 class TransactionListPlaid(APIView):
-    permission_classes = [IsCreationOrIsAuthenticated]
+    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def post(self, request):
@@ -329,7 +327,7 @@ class TransactionListPlaid(APIView):
 
 
 class TransactionListDB(APIView):
-    permission_classes = [IsCreationOrIsAuthenticated]
+    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):
@@ -361,8 +359,15 @@ class TransactionListDB(APIView):
         )
 
 
+class TransactionDetailsDB(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Transaction.objects.all()
+    serializer_class = TransactionSerializer
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+
 class InvestmentListPlaid(APIView):
-    permission_classes = [IsCreationOrIsAuthenticated]
+    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def post(self, request):
@@ -411,7 +416,7 @@ class InvestmentListPlaid(APIView):
 
 
 class InvestmentListDB(APIView):
-    permission_classes = [IsCreationOrIsAuthenticated]
+    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):
