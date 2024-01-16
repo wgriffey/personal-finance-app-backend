@@ -5,64 +5,86 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0016_alter_transaction_transaction_id_and_more'),
+        ("personalFinanceAppAPI", "0016_alter_transaction_transaction_id_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Investment',
+            name="Investment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('security_id', models.CharField(blank=True, max_length=100)),
-                ('security_name', models.CharField(blank=True, max_length=100)),
-                ('security_ticker', models.CharField(blank=True, max_length=20)),
-                ('price', models.FloatField()),
-                ('price_as_of', models.DateField()),
-                ('cost_basis', models.FloatField()),
-                ('quantity', models.FloatField()),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("security_id", models.CharField(blank=True, max_length=100)),
+                ("security_name", models.CharField(blank=True, max_length=100)),
+                ("security_ticker", models.CharField(blank=True, max_length=20)),
+                ("price", models.FloatField()),
+                ("price_as_of", models.DateField()),
+                ("cost_basis", models.FloatField()),
+                ("quantity", models.FloatField()),
             ],
         ),
         migrations.RemoveField(
-            model_name='investmentholding',
-            name='account',
+            model_name="investmentholding",
+            name="account",
         ),
         migrations.DeleteModel(
-            name='InvestmentSecurity',
+            name="InvestmentSecurity",
         ),
         migrations.AlterUniqueTogether(
-            name='transaction',
+            name="transaction",
             unique_together=set(),
         ),
         migrations.AddField(
-            model_name='item',
-            name='institution_id',
-            field=models.CharField(default='', max_length=100),
+            model_name="item",
+            name="institution_id",
+            field=models.CharField(default="", max_length=100),
             preserve_default=False,
         ),
         migrations.AddConstraint(
-            model_name='account',
-            constraint=models.UniqueConstraint(fields=('item_id', 'account_id'), name='item_account_unique_constraint'),
+            model_name="account",
+            constraint=models.UniqueConstraint(
+                fields=("item_id", "account_id"), name="item_account_unique_constraint"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='item',
-            constraint=models.UniqueConstraint(fields=('user', 'institution_id'), name='user_institution_unique_constraint'),
+            model_name="item",
+            constraint=models.UniqueConstraint(
+                fields=("user", "institution_id"),
+                name="user_institution_unique_constraint",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='transaction',
-            constraint=models.UniqueConstraint(fields=('account', 'transaction_id'), name='account_transaction_unique_constraint'),
+            model_name="transaction",
+            constraint=models.UniqueConstraint(
+                fields=("account", "transaction_id"),
+                name="account_transaction_unique_constraint",
+            ),
         ),
         migrations.DeleteModel(
-            name='InvestmentHolding',
+            name="InvestmentHolding",
         ),
         migrations.AddField(
-            model_name='investment',
-            name='account',
-            field=models.ForeignKey(blank=True, on_delete=django.db.models.deletion.CASCADE, to='personalFinanceAppAPI.account'),
+            model_name="investment",
+            name="account",
+            field=models.ForeignKey(
+                blank=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="personalFinanceAppAPI.account",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='investment',
-            constraint=models.UniqueConstraint(fields=('account', 'security_id'), name='account_security_unique_constraint'),
+            model_name="investment",
+            constraint=models.UniqueConstraint(
+                fields=("account", "security_id"),
+                name="account_security_unique_constraint",
+            ),
         ),
     ]

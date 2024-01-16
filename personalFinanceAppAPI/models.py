@@ -1,9 +1,11 @@
 from django.db import models
 from authuser.models import User
 
+
 class Institution(models.Model):
     institution_id = models.CharField(max_length=100)
     institution_name = models.CharField(max_length=200)
+
 
 class Item(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -13,7 +15,10 @@ class Item(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['user', 'institution_id'], name='user_institution_unique_constraint')
+            models.UniqueConstraint(
+                fields=["user", "institution_id"],
+                name="user_institution_unique_constraint",
+            )
         ]
 
     def __str__(self):
@@ -28,10 +33,12 @@ class Account(models.Model):
     name = models.CharField(max_length=100, blank=True)
     account_type = models.CharField(max_length=100, blank=True)
     account_subtype = models.CharField(max_length=100, blank=True)
-    
+
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['item_id', 'account_id'], name='item_account_unique_constraint')
+            models.UniqueConstraint(
+                fields=["item_id", "account_id"], name="item_account_unique_constraint"
+            )
         ]
 
     def __str__(self):
@@ -51,9 +58,10 @@ class Transaction(models.Model):
     def __str__(self):
         return self.transaction_id
 
+
 class Investment(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, blank=True)
-    security_id = models.CharField(max_length = 100, blank=True)
+    security_id = models.CharField(max_length=100, blank=True)
     security_name = models.CharField(max_length=100, blank=True)
     security_ticker = models.CharField(max_length=20, blank=True)
     price = models.FloatField()
@@ -63,7 +71,8 @@ class Investment(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['account', 'security_id'], name='account_security_unique_constraint')
+            models.UniqueConstraint(
+                fields=["account", "security_id"],
+                name="account_security_unique_constraint",
+            )
         ]
-        
-

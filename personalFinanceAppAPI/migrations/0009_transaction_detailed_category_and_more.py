@@ -4,21 +4,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0008_delete_transactioncategory'),
+        ("personalFinanceAppAPI", "0008_delete_transactioncategory"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='transaction',
-            name='detailed_category',
+            model_name="transaction",
+            name="detailed_category",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AddField(
-            model_name='transaction',
-            name='primary_category',
-            field=models.CharField(default='', max_length=100),
+            model_name="transaction",
+            name="primary_category",
+            field=models.CharField(default="", max_length=100),
             preserve_default=False,
         ),
     ]

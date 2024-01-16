@@ -4,20 +4,19 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0006_transactioncategory'),
+        ("personalFinanceAppAPI", "0006_transactioncategory"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='investmentholding',
-            old_name='security_id',
-            new_name='security',
+            model_name="investmentholding",
+            old_name="security_id",
+            new_name="security",
         ),
         migrations.RenameField(
-            model_name='transactioncategory',
-            old_name='transaction_id',
-            new_name='transaction',
+            model_name="transactioncategory",
+            old_name="transaction_id",
+            new_name="transaction",
         ),
     ]

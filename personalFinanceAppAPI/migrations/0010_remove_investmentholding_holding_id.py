@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0009_transaction_detailed_category_and_more'),
+        ("personalFinanceAppAPI", "0009_transaction_detailed_category_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='investmentholding',
-            name='holding_id',
+            model_name="investmentholding",
+            name="holding_id",
         ),
     ]

@@ -5,70 +5,77 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0011_alter_investmentsecurity_ticker'),
+        ("personalFinanceAppAPI", "0011_alter_investmentsecurity_ticker"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='account',
-            name='account_id',
+            model_name="account",
+            name="account_id",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AlterField(
-            model_name='account',
-            name='account_subtype',
+            model_name="account",
+            name="account_subtype",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AlterField(
-            model_name='account',
-            name='account_type',
+            model_name="account",
+            name="account_type",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AlterField(
-            model_name='account',
-            name='name',
+            model_name="account",
+            name="name",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AlterField(
-            model_name='investmentholding',
-            name='account',
-            field=models.ForeignKey(blank=True, on_delete=django.db.models.deletion.CASCADE, to='personalFinanceAppAPI.account'),
+            model_name="investmentholding",
+            name="account",
+            field=models.ForeignKey(
+                blank=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="personalFinanceAppAPI.account",
+            ),
         ),
         migrations.AlterField(
-            model_name='investmentholding',
-            name='security',
-            field=models.ForeignKey(blank=True, on_delete=django.db.models.deletion.CASCADE, to='personalFinanceAppAPI.investmentsecurity'),
+            model_name="investmentholding",
+            name="security",
+            field=models.ForeignKey(
+                blank=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                to="personalFinanceAppAPI.investmentsecurity",
+            ),
         ),
         migrations.AlterField(
-            model_name='investmentsecurity',
-            name='name',
+            model_name="investmentsecurity",
+            name="name",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AlterField(
-            model_name='investmentsecurity',
-            name='security_id',
+            model_name="investmentsecurity",
+            name="security_id",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AlterField(
-            model_name='investmentsecurity',
-            name='ticker',
+            model_name="investmentsecurity",
+            name="ticker",
             field=models.CharField(blank=True, max_length=20),
         ),
         migrations.AlterField(
-            model_name='transaction',
-            name='name',
+            model_name="transaction",
+            name="name",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AlterField(
-            model_name='transaction',
-            name='payment_channel',
+            model_name="transaction",
+            name="payment_channel",
             field=models.CharField(blank=True, max_length=100),
         ),
         migrations.AlterField(
-            model_name='transaction',
-            name='primary_category',
+            model_name="transaction",
+            name="primary_category",
             field=models.CharField(blank=True, max_length=100),
         ),
     ]

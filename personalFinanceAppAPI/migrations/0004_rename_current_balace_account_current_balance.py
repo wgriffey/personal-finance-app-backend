@@ -4,15 +4,17 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0003_account_item_transaction_delete_plaidlinktoken_and_more'),
+        (
+            "personalFinanceAppAPI",
+            "0003_account_item_transaction_delete_plaidlinktoken_and_more",
+        ),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='account',
-            old_name='current_balace',
-            new_name='current_balance',
+            model_name="account",
+            old_name="current_balace",
+            new_name="current_balance",
         ),
     ]

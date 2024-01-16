@@ -6,52 +6,90 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('personalFinanceAppAPI', '0002_plaidlinktoken_delete_article'),
+        ("personalFinanceAppAPI", "0002_plaidlinktoken_delete_article"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Account',
+            name="Account",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('account_id', models.CharField(max_length=100)),
-                ('available_balance', models.FloatField()),
-                ('current_balace', models.FloatField()),
-                ('name', models.CharField(max_length=100)),
-                ('account_type', models.CharField(max_length=100)),
-                ('account_subtype', models.CharField(max_length=100)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("account_id", models.CharField(max_length=100)),
+                ("available_balance", models.FloatField()),
+                ("current_balace", models.FloatField()),
+                ("name", models.CharField(max_length=100)),
+                ("account_type", models.CharField(max_length=100)),
+                ("account_subtype", models.CharField(max_length=100)),
             ],
         ),
         migrations.CreateModel(
-            name='Item',
+            name="Item",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('item_id', models.CharField(max_length=100)),
-                ('access_token', models.CharField(max_length=100)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("item_id", models.CharField(max_length=100)),
+                ("access_token", models.CharField(max_length=100)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Transaction',
+            name="Transaction",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('transaction_id', models.CharField(max_length=100)),
-                ('amount', models.FloatField()),
-                ('date', models.DateField()),
-                ('name', models.CharField(max_length=100)),
-                ('payment_channel', models.CharField(max_length=100)),
-                ('account', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='personalFinanceAppAPI.account')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("transaction_id", models.CharField(max_length=100)),
+                ("amount", models.FloatField()),
+                ("date", models.DateField()),
+                ("name", models.CharField(max_length=100)),
+                ("payment_channel", models.CharField(max_length=100)),
+                (
+                    "account",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="personalFinanceAppAPI.account",
+                    ),
+                ),
             ],
         ),
         migrations.DeleteModel(
-            name='PlaidLinkToken',
+            name="PlaidLinkToken",
         ),
         migrations.AddField(
-            model_name='account',
-            name='item',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='personalFinanceAppAPI.item'),
+            model_name="account",
+            name="item",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                to="personalFinanceAppAPI.item",
+            ),
         ),
     ]

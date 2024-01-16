@@ -4,22 +4,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0001_initial'),
+        ("personalFinanceAppAPI", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PlaidLinkToken',
+            name="PlaidLinkToken",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('link_token', models.CharField(default='', max_length=100)),
-                ('expiration', models.DateTimeField()),
-                ('request_id', models.CharField(default='', max_length=100)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("link_token", models.CharField(default="", max_length=100)),
+                ("expiration", models.DateTimeField()),
+                ("request_id", models.CharField(default="", max_length=100)),
             ],
         ),
         migrations.DeleteModel(
-            name='Article',
+            name="Article",
         ),
     ]

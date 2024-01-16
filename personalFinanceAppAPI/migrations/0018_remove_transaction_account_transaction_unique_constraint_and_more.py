@@ -4,19 +4,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0017_investment_remove_investmentholding_account_and_more'),
+        (
+            "personalFinanceAppAPI",
+            "0017_investment_remove_investmentholding_account_and_more",
+        ),
     ]
 
     operations = [
         migrations.RemoveConstraint(
-            model_name='transaction',
-            name='account_transaction_unique_constraint',
+            model_name="transaction",
+            name="account_transaction_unique_constraint",
         ),
         migrations.AlterField(
-            model_name='transaction',
-            name='transaction_id',
+            model_name="transaction",
+            name="transaction_id",
             field=models.CharField(max_length=100, unique=True),
         ),
     ]

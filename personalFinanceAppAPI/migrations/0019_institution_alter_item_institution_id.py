@@ -5,23 +5,36 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0018_remove_transaction_account_transaction_unique_constraint_and_more'),
+        (
+            "personalFinanceAppAPI",
+            "0018_remove_transaction_account_transaction_unique_constraint_and_more",
+        ),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Institution',
+            name="Institution",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('institution_id', models.CharField(max_length=100)),
-                ('institution_name', models.CharField(max_length=200)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("institution_id", models.CharField(max_length=100)),
+                ("institution_name", models.CharField(max_length=200)),
             ],
         ),
         migrations.AlterField(
-            model_name='item',
-            name='institution_id',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='personalFinanceAppAPI.institution'),
+            model_name="item",
+            name="institution_id",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                to="personalFinanceAppAPI.institution",
+            ),
         ),
     ]

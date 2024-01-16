@@ -4,15 +4,14 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0019_institution_alter_item_institution_id'),
+        ("personalFinanceAppAPI", "0019_institution_alter_item_institution_id"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='item',
-            old_name='institution_id',
-            new_name='institution',
+            model_name="item",
+            old_name="institution_id",
+            new_name="institution",
         ),
     ]

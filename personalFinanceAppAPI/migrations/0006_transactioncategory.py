@@ -5,18 +5,31 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0005_investmentsecurity_investmentholding'),
+        ("personalFinanceAppAPI", "0005_investmentsecurity_investmentholding"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='TransactionCategory',
+            name="TransactionCategory",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('category', models.CharField(max_length=100)),
-                ('transaction_id', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='personalFinanceAppAPI.transaction')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("category", models.CharField(max_length=100)),
+                (
+                    "transaction_id",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="personalFinanceAppAPI.transaction",
+                    ),
+                ),
             ],
         ),
     ]

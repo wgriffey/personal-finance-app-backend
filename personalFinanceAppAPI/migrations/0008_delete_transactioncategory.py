@@ -4,13 +4,15 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('personalFinanceAppAPI', '0007_rename_security_id_investmentholding_security_and_more'),
+        (
+            "personalFinanceAppAPI",
+            "0007_rename_security_id_investmentholding_security_and_more",
+        ),
     ]
 
     operations = [
         migrations.DeleteModel(
-            name='TransactionCategory',
+            name="TransactionCategory",
         ),
     ]
