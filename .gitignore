@@ -135,3 +135,9 @@ GitHub.sublime-settings
 !.vscode/launch.json 
 !.vscode/extensions.json 
 .history
+/.idea/.gitignore
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/personal-finance-app-backend.iml
+/.idea/inspectionProfiles/profiles_settings.xml
+/.idea/vcs.xml

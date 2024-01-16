@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import json
 from django.db import IntegrityError
 from django.http import JsonResponse
 from authuser.models import User
@@ -7,12 +8,15 @@ from rest_framework.parsers import JSONParser
 from rest_framework.decorators import APIView
 from rest_framework.response import Response
 from rest_framework.authentication import TokenAuthentication
+
 from .models import Institution, Investment, Item, Account, Transaction
-from .serializers import InstitutionSerializer, InvestmentSerializer, UserSerializer, AccountSerializer, TransactionSerializer
+from .serializers import InstitutionSerializer, InvestmentSerializer, UserSerializer, AccountSerializer, \
+    TransactionSerializer
 from .permissions import IsCreationOrIsAuthenticated
 from .utils import clean_accounts_data, clean_investment_data, clean_transaction_data
-from plaid import Configuration, Environment, ApiClient, ApiException
 from plaid.api import plaid_api
+from plaid.configuration import Configuration, Environment
+from plaid.api_client import ApiClient, ApiException
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
@@ -22,7 +26,6 @@ from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
 from plaid.model.accounts_get_request import AccountsGetRequest
 from plaid.model.transactions_get_request import TransactionsGetRequest
-from plaid.model.transactions_get_request_options import TransactionsGetRequestOptions
 from plaid.model.investments_holdings_get_request import InvestmentsHoldingsGetRequest
 from dotenv import load_dotenv
 import os
@@ -30,10 +33,6 @@ import os
 load_dotenv('./env/.env.sandbox')
 
 host = Environment.Sandbox
-
-access_token = None
-
-item_id = None
 
 configuration = Configuration(
     host=host,
@@ -54,16 +53,33 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = (TokenAuthentication,)
 
+
 class PlaidLinkToken(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def post(self, request):
         user = request.user
+        if 'item_id' in request.data and not request.data['item_id'] is None:
+            item = Item.objects.get(pk=request.data['item_id'])
+            # Update Link Request for existing user
+            update_link_request = LinkTokenCreateRequest(
+                client_name="G&E Personal Finance",
+                country_codes=[CountryCode('US')],
+                access_token=item.access_token,
+                redirect_uri='http://localhost:3000/',
+                language='en',
+                webhook='https://webhook.example.com',
+                user=LinkTokenCreateRequestUser(
+                    client_user_id=str(user.id)
+                )
+            )
+            update_link_response = client.link_token_create(update_link_request)
+            return Response(update_link_response.to_dict(), status=status.HTTP_201_CREATED)
 
-        # Create a link_token for the given user
+        # Create a link_token for the new user
         request = LinkTokenCreateRequest(
-            products=[Products('transactions')],
+            products=[Products('transactions'), Products('investments')],
             client_name="G&E Personal Finance",
             country_codes=[CountryCode('US')],
             redirect_uri='http://localhost:3000/',
@@ -77,6 +93,7 @@ class PlaidLinkToken(APIView):
         # Send the data to the client
         return Response(response.to_dict(), status=status.HTTP_201_CREATED)
 
+
 class PublicTokenExchange(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
@@ -85,13 +102,13 @@ class PublicTokenExchange(APIView):
         user = request.user
 
         public_token = request.data['public_token']
-        
+
         token_request = ItemPublicTokenExchangeRequest(
             public_token=public_token
         )
-        
+
         token_response = client.item_public_token_exchange(token_request)
-        
+
         access_token = token_response['access_token']
         item_id = token_response['item_id']
 
@@ -110,30 +127,36 @@ class PublicTokenExchange(APIView):
         )
 
         institution_response = client.institutions_get_by_id(institution_request)
-        
-        #Save New Institutions to DB
+
+        # Save New Institutions to DB
         if Institution.objects.filter(institution_id=institution_id):
             pass
         else:
             try:
-                institution = Institution.objects.create(institution_id=institution_id, institution_name=institution_response['institution']['name'])
+                institution = Institution.objects.create(institution_id=institution_id,
+                                                         institution_name=institution_response['institution']['name'])
                 institution.save()
             except Exception as e:
-                return Response(data={'message': 'Failed to Save Institution', 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+                return Response(data={'message': 'Failed to Save Institution', 'error': str(e)},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         institution_pk = Institution.objects.get(institution_id=institution_id).pk
 
         if Item.objects.filter(user=user, institution_id=institution_pk):
             return Response("Item for Institution Exists for User", status=status.HTTP_409_CONFLICT)
-        
+
         # Save Item to Database
         try:
-            item = Item.objects.create(user = user, item_id = item_id, access_token = access_token, institution_id = institution_pk)
+            item = Item.objects.create(user=user, item_id=item_id, access_token=access_token,
+                                       institution_id=institution_pk)
             item.save()
         except Exception as e:
-            return Response(data={'message': 'Failed to Save Item', 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(data={'message': 'Failed to Save Item', 'error': str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response('Item and Access Token Generated for User Access to Institution', status = status.HTTP_201_CREATED)
+        return Response('Item and Access Token Generated for User Access to Institution',
+                        status=status.HTTP_201_CREATED)
+
 
 class InstitutionDetailsDB(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
@@ -141,41 +164,44 @@ class InstitutionDetailsDB(APIView):
 
     def get(self, request, account_id):
         account = Account.objects.get(id=account_id)
-        
+
         item = Item.objects.get(id=account.item.pk)
 
         institution = Institution.objects.get(id=item.institution_id)
 
         institution_serializer = InstitutionSerializer(institution)
 
-        return Response(institution_serializer.data, status=status.HTTP_200_OK)        
+        return Response(institution_serializer.data, status=status.HTTP_200_OK)
+
 
 class AccountListPlaid(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
-    def post(self, request):        
+    def post(self, request):
         items = Item.objects.filter(user=request.user)
         accounts_saved_list = []
         accounts_dict = {}
-        
+
         # Get All Accounts For User
         for item in items:
             access_token = item.access_token
-        
+
             try:
                 accounts_request = AccountsGetRequest(
                     access_token=access_token
                 )
                 accounts_response = client.accounts_get(accounts_request)
             except ApiException as e:
-                response = JSONParser(e.body)
-                return JsonResponse({'error': {'status_code': e.status, 'display_message':
-                                response['error_message'], 'error_code': response['error_code'], 'error_type': response['error_type']}})
+                response = json.loads(e.body)
+
+                return Response({'error': {'status_code': e.status, 'display_message':
+                    response['error_message'], 'error_code': response['error_code'],
+                                           'error_type': response['error_type']}})
 
             # Clean the Account Data
-            accounts = clean_accounts_data(item.pk, accounts_response['accounts']) 
-            
+            accounts = clean_accounts_data(item.pk, accounts_response['accounts'])
+
             # Skip Existing Accounts and Save New Accounts
             for acc in accounts:
                 if Account.objects.filter(item_id=acc['item'], account_id=acc['account_id']):
@@ -183,27 +209,28 @@ class AccountListPlaid(APIView):
                 else:
                     try:
                         # Save Account Data to DB
-                        account_serializer = AccountSerializer(data=acc)         
+                        account_serializer = AccountSerializer(data=acc)
                         account_serializer.is_valid(raise_exception=True)
                         account_serializer.save()
                     except IntegrityError as e:
                         return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
-                
+
                 accounts_saved_list.append(account_serializer.data)
             if len(accounts_saved_list) != 0:
                 accounts_dict[item.institution_id] = accounts_saved_list
 
         if not accounts_dict:
             return Response("No New Accounts to Save From Plaid", status=status.HTTP_409_CONFLICT)
-        
-        return Response(accounts_dict, status = status.HTTP_201_CREATED) 
+
+        return Response(accounts_dict, status=status.HTTP_201_CREATED)
+
 
 class AccountListDB(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):
-        items = Item.objects.filter(user = request.user)
+        items = Item.objects.filter(user=request.user)
 
         accounts = []
 
@@ -215,6 +242,7 @@ class AccountListDB(APIView):
 
         return Response(accounts, status=status.HTTP_200_OK)
 
+
 class AccountDetailsDB(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
@@ -224,13 +252,14 @@ class AccountDetailsDB(APIView):
             account = Account.objects.get(id=id)
             account_serializer = AccountSerializer(account)
         except:
-            return Response('Account Not Found', status=status.HTTP_404_NOT_FOUND)  
-        return Response(account_serializer.data, status=status.HTTP_200_OK)        
+            return Response('Account Not Found', status=status.HTTP_404_NOT_FOUND)
+        return Response(account_serializer.data, status=status.HTTP_200_OK)
 
 
 class TransactionListPlaid(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
+
     def post(self, request):
         items = Item.objects.filter(user=request.user)
         transactions_saved_list = []
@@ -239,13 +268,14 @@ class TransactionListPlaid(APIView):
         for item in items:
             access_token = item.access_token
 
-            start_date = (datetime.now() - timedelta(days=30)).date()
+            start_date = (datetime.now() - timedelta(days=720)).date()
             end_date = datetime.now().date()
 
-            if ('start_date' in request.data and request.data['start_date'] is not None) and ('end_date' in request.data and request.data['end_date'] is not None):
+            if ('start_date' in request.data and request.data['start_date'] is not None) and (
+                    'end_date' in request.data and request.data['end_date'] is not None):
                 start_date = request.data['start_date']
                 end_date = request.data['end_date']
-            
+
             transaction_request = TransactionsGetRequest(
                 access_token=access_token,
                 start_date=start_date,
@@ -258,7 +288,7 @@ class TransactionListPlaid(APIView):
             transactions = clean_transaction_data(response['transactions'])
 
             for tran in transactions:
-                #Skip existing transactions and save new transactions
+                # Skip existing transactions and save new transactions
                 if Transaction.objects.filter(transaction_id=tran['transaction_id']):
                     continue
                 else:
@@ -268,35 +298,43 @@ class TransactionListPlaid(APIView):
                         transaction_serializer.save()
                     except IntegrityError as e:
                         return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
-                    
+
                     transactions_saved_list.append(transaction_serializer.data)
             if len(transactions_saved_list) != 0:
                 transactions_dict[item.institution_id] = transactions_saved_list
 
         if not transactions_dict:
             return Response("No New Transactions to Save From Plaid", status=status.HTTP_409_CONFLICT)
-            
-        return Response(transactions_dict, status= status.HTTP_201_CREATED)
+
+        return Response(transactions_dict, status=status.HTTP_201_CREATED)
+
 
 class TransactionListDB(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):
-        items = Item.objects.filter(user = request.user)
+        items = Item.objects.filter(user=request.user)
+        start_date = request.query_params.get('start_date', )
+        end_date = request.query_params.get('end_date', datetime.now().date())
+        if start_date == 'undefined' or end_date == 'undefined':
+            start_date = (datetime.now() - timedelta(days=720)).date()
+            end_date = datetime.now().date()
+        print(f'Start: {start_date} End: {end_date}')
         transactions = []
         for item in items:
-            dbAccounts = Account.objects.filter(item_id=item.id)
+            db_accounts = Account.objects.filter(item_id=item.id)
 
-            account_id_list = [acc.id for acc in dbAccounts]
-        
-            db_transactions = Transaction.objects.filter(account__in=account_id_list)
+            account_id_list = [acc.id for acc in db_accounts]
+
+            db_transactions = Transaction.objects.filter(account__in=account_id_list, date__range=(start_date, end_date))
             transaction_serializer = TransactionSerializer(db_transactions, many=True)
             for tran in transaction_serializer.data:
                 transactions.append(tran)
 
-        return Response(transactions, status=status.HTTP_200_OK)
-    
+        return Response(sorted(transactions, key=lambda t: t['date'], reverse=True), status=status.HTTP_200_OK)
+
+
 class InvestmentListPlaid(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
@@ -309,7 +347,7 @@ class InvestmentListPlaid(APIView):
         for item in items:
 
             access_token = item.access_token
-        
+
             investment_request = InvestmentsHoldingsGetRequest(
                 access_token=access_token,
             )
@@ -319,44 +357,45 @@ class InvestmentListPlaid(APIView):
             ## Clean Investment Data
             investment_data = clean_investment_data(response['holdings'], response['securities'])
 
-            #Skip Existing Investments for an Account and Save New Investments for an Account
+            # Skip Existing Investments for an Account and Save New Investments for an Account
             for investment in investment_data:
                 if Investment.objects.filter(account_id=investment['account'], security_id=investment['security_id']):
                     continue
                 else:
                     try:
-                        investment_serializer = InvestmentSerializer(data=investment)         
+                        investment_serializer = InvestmentSerializer(data=investment)
                         investment_serializer.is_valid(raise_exception=True)
                         investment_serializer.save()
                     except IntegrityError as e:
                         return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
-                    
+
                     investments_saved_list.append(investment_serializer.data)
-            if len(investments_saved_list) != 0:       
+            if len(investments_saved_list) != 0:
                 investments_dict[item.institution_id] = investments_saved_list
-        
+
         if not investments_dict:
             return Response("No New Investment Accounts to Save From Plaid", status=status.HTTP_409_CONFLICT)
 
-        return Response(investments_dict, status= status.HTTP_201_CREATED)
-    
+        return Response(investments_dict, status=status.HTTP_201_CREATED)
+
+
 class InvestmentListDB(APIView):
     permission_classes = [IsCreationOrIsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):
-        items = Item.objects.filter(user = request.user)
+        items = Item.objects.filter(user=request.user)
         investments = []
 
         for item in items:
-            dbAccounts = Account.objects.filter(item_id=item.id)
+            db_accounts = Account.objects.filter(item_id=item.id)
 
-            account_id_list = [acc.id for acc in dbAccounts]
+            account_id_list = [acc.id for acc in db_accounts]
 
             db_investments = Investment.objects.filter(account__in=account_id_list)
             investment_serializer = InvestmentSerializer(db_investments, many=True)
 
             for inv in investment_serializer.data:
                 investments.append(inv)
-            
+
         return Response(investments, status=status.HTTP_200_OK)

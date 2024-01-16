@@ -1,6 +1,7 @@
 from .models import Account, Investment, Item, Transaction
 from datetime import datetime
 
+
 def clean_accounts_data(item_id, accounts):
     accounts_data = []
 
@@ -33,23 +34,24 @@ def clean_accounts_data(item_id, accounts):
         data['account_subtype'] = str(acc['subtype'])
 
         accounts_data.append(data)
-    
+
     return accounts_data
+
 
 def clean_transaction_data(transactions):
     transaction_data = []
 
     for tran in transactions:
         data = {}
-        data['account'] = Account.objects.get(account_id = tran['account_id']).pk
+        data['account'] = Account.objects.get(account_id=tran['account_id']).pk
         data['transaction_id'] = tran['transaction_id']
 
         if not 'amount' in tran or tran['amount'] is None:
             tran['amount'] = 0
-        
+
         if not 'date' in tran or tran['date'] is None:
             tran['date'] = datetime.now().date()
-        
+
         if not 'name' in tran or tran['name'] is None:
             tran['name'] = ''
 
@@ -69,24 +71,24 @@ def clean_transaction_data(transactions):
         else:
             data['detailed_category'] = ''
 
-
         transaction_data.append(data)
 
     return transaction_data
+
 
 def clean_investment_data(holdings, securities):
     investment_data = []
 
     for h in holdings:
         new_investment_data = {}
-        new_investment_data['account'] = Account.objects.get(account_id = h['account_id']).pk
-        
+        new_investment_data['account'] = Account.objects.get(account_id=h['account_id']).pk
+
         if not 'security_id' in h or h['security_id'] is None:
             h['security_id'] = ''
-        
+
         if not 'institution_price' in h or h['institution_price'] is None:
             h['institution_price'] = 0
-        
+
         if not 'institution_price_as_of' in h or h['institution_price_as_of'] is None:
             h['institution_price_as_of'] = datetime.now().date()
 
@@ -95,15 +97,15 @@ def clean_investment_data(holdings, securities):
 
         if not 'quantity' in h or h['quantity'] is None:
             h['quantity'] = 0
-        
+
         new_investment_data['security_id'] = h['security_id']
-        
+
         # Find security name and ticker in list of securities and set the values in our new investment data dict
         for s in securities:
             if s['security_id'] == new_investment_data['security_id']:
                 new_investment_data['security_name'] = s['name']
                 new_investment_data['security_ticker'] = s['ticker_symbol']
-               
+
         if new_investment_data['security_name'] is None:
             new_investment_data['security_name'] = ''
 
@@ -116,7 +118,5 @@ def clean_investment_data(holdings, securities):
         new_investment_data['quantity'] = h['quantity']
 
         investment_data.append(new_investment_data)
-    
+
     return investment_data
-
-
