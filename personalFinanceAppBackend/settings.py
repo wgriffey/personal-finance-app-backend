@@ -40,12 +40,12 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "corsheaders",
-    "personalFinanceAppAPI",
-    "authuser",
+    "personalFinanceAppBackend.api",
+    "personalFinanceAppBackend.users",
 ]
 
 
-AUTH_USER_MODEL = "authuser.User"
+AUTH_USER_MODEL = "users.User"
 
 
 MIDDLEWARE = [
