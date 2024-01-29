@@ -19,7 +19,7 @@ from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
 from plaid.model.products import Products
 from plaid.model.transactions_get_request import TransactionsGetRequest
-from rest_framework import generics, status, viewsets
+from rest_framework import generics, status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -34,7 +34,7 @@ from .serializers import (
 )
 from .utils import clean_accounts_data, clean_investment_data, clean_transaction_data
 
-load_dotenv("./env/.env.sandbox")
+load_dotenv("./env/.env.local.sandbox")
 
 host = Environment.Sandbox
 
@@ -269,8 +269,10 @@ class AccountDetailsDB(APIView):
         try:
             account = Account.objects.get(id=id)
             account_serializer = AccountSerializer(account)
-        except:
+        except Account.DoesNotExist:
             return Response("Account Not Found", status=status.HTTP_404_NOT_FOUND)
+        except Account.MultipleObjectsReturned:
+            return Response("Multiple Accounts Returned", status=status.HTTP_409_CONFLICT)
         return Response(account_serializer.data, status=status.HTTP_200_OK)
 
 
