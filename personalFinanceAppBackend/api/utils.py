@@ -44,6 +44,7 @@ def clean_transaction_data(transactions):
 
     for tran in transactions:
         data = {}
+        print(tran)
         data["account"] = Account.objects.get(account_id=tran["account_id"]).pk
         data["transaction_id"] = tran["transaction_id"]
 
