@@ -24,7 +24,7 @@ urlpatterns = [
     ),
     path("api/save_accounts_from_plaid", AccountListPlaid.as_view()),
     path("api/get_accounts", AccountListDB.as_view()),
-    path("api/get_account/<int:id>", AccountDetailsDB.as_view()),
+    path("api/get_account/<int:pk>", AccountDetailsDB.as_view()),
     path("api/save_transactions_from_plaid", TransactionListPlaid.as_view()),
     path("api/get_transactions", TransactionListDB.as_view()),
     path("api/transaction/<int:pk>", TransactionDetailsDB.as_view()),

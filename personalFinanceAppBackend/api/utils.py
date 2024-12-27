@@ -1,126 +1,231 @@
 from datetime import datetime
+from logging import getLogger
 
-from .models import Account, Investment, Item, Transaction
+from django.core.exceptions import MultipleObjectsReturned
+from django.db import DatabaseError
+from .models import Account
 
+logger = getLogger("personal_finance_app")
 
-def clean_accounts_data(item_id, accounts):
-    accounts_data = []
+def clean_accounts_data(item_id: int, accounts: list) -> list:
+    """
+    Clean and transform Plaid account data into application format.
+    
+    Args:
+        item_id: The ID of the Item these accounts belong to
+        accounts: List of account data from Plaid API
+        
+    Returns:
+        List of cleaned account data ready for serialization
+    """
+    
+    if not isinstance(accounts, list):
+        raise ValueError("accounts must be a list")
+    if not item_id:
+        raise ValueError("item_id is required")
 
-    for acc in accounts:
-        data = {}
-        data["item"] = item_id
-        data["account_id"] = acc["account_id"]
+    cleaned_accounts = []
+    
+    for account in accounts:
+        try:
+            if 'account_id' not in account:
+                logger.error("Account missing account_id field")
+                continue
+            
+            # Initialize balances with defaults if missing
+            balances = account.get('balances', {})
+            
+            cleaned_account = {
+                "item": item_id,
+                "account_id": account['account_id'],
+                "available_balance": balances.get('available', 0),
+                "current_balance": balances.get('current', 0),
+                "name": account.get('name', ''),
+                "account_type": str(account.get('type', '')),
+                "account_subtype": str(account.get('subtype', ''))
+            }
 
-        if not "balances" in acc:
-            acc["balances"] = {}
-            acc["balances"]["available"] = 0
-            acc["balances"]["current"] = 0
+            cleaned_accounts.append(cleaned_account)
 
-        if acc["balances"]["available"] is None:
-            acc["balances"]["available"] = 0
-        if acc["balances"]["current"] is None:
-            acc["balances"]["current"] = 0
+        except (KeyError, TypeError) as e:
+            logger.error(f"Error cleaning account data: {e}", extra={
+                'account_id': account.get('account_id', 'unknown'),
+                'error': str(e)
+            })
+            continue
 
-        if not "name" in acc or acc["name"] is None:
-            acc["name"] = ""
-        if not "type" in acc or acc["type"] is None:
-            acc["type"] = ""
-        if not "subtype" in acc or acc["subtype"] is None:
-            acc["subtype"] = ""
+    return cleaned_accounts
 
-        data["available_balance"] = acc["balances"]["available"]
-        data["current_balance"] = acc["balances"]["current"]
-        data["name"] = acc["name"]
-        data["account_type"] = str(acc["type"])
-        data["account_subtype"] = str(acc["subtype"])
+def clean_transaction_data(transactions: list) -> list:
+    """
+    Clean and transform Plaid transaction data into application format.
+    
+    Args:
+        transactions: List of transaction data from Plaid API
+        
+    Returns:
+        List of cleaned transaction data ready for serialization
+    """
+    cleaned_transactions = []
+    
+    for transaction in transactions:
+        try:
+            if 'account_id' not in transaction or 'transaction_id' not in transaction:
+                logger.error("Transaction missing required fields")
+                continue
 
-        accounts_data.append(data)
+            try:
+                account = Account.objects.get(account_id=transaction['account_id'])
+            except Account.DoesNotExist:
+                logger.error(f"Account not found for transaction {transaction['transaction_id']}")
+                continue
+            except MultipleObjectsReturned:
+                logger.error(f"Multiple accounts found for transaction {transaction['transaction_id']}")
+                continue
+            except DatabaseError as e:
+                logger.error(f"Database error while fetching account: {e}")
+                continue
 
-    return accounts_data
+            category = transaction.get('personal_finance_category', {})
 
+            cleaned_transaction = {
+                "account": account.pk,
+                "transaction_id": transaction['transaction_id'],
+                "amount": transaction.get('amount', 0),
+                "date": transaction.get('date', datetime.now().date()),
+                "name": transaction.get('name', ''),
+                "payment_channel": transaction.get('payment_channel', ''),
+                "primary_category": category.get('primary', ''),
+                "detailed_category": category.get('detailed', '')
+            }
 
-def clean_transaction_data(transactions):
-    transaction_data = []
+            cleaned_transactions.append(cleaned_transaction)
 
-    for tran in transactions:
-        data = {}
-        print(tran)
-        data["account"] = Account.objects.get(account_id=tran["account_id"]).pk
-        data["transaction_id"] = tran["transaction_id"]
+        except (ValueError, TypeError) as e:
+            logger.error(f"Error cleaning transaction data: {e}", extra={
+                'transaction_id': transaction.get('transaction_id', 'unknown'),
+                'error': str(e)
+            })
+            continue
 
-        if not "amount" in tran or tran["amount"] is None:
-            tran["amount"] = 0
+    return cleaned_transactions
 
-        if not "date" in tran or tran["date"] is None:
-            tran["date"] = datetime.now().date()
+def clean_investment_data(holdings: list, securities: list) -> list:
+    """
+    Clean and transform Plaid investment data into application format.
+    
+    Args:
+        holdings: List of holding data from Plaid API
+        securities: List of security data from Plaid API
+        
+    Returns:
+        List of cleaned investment data ready for serialization
+    """
+    cleaned_investments = []
+    
+    # Create a lookup dictionary for securities
+    security_lookup = {
+        security['security_id']: {
+            'name': security.get('name', ''),
+            'ticker': security.get('ticker_symbol', '')
+        }
+        for security in securities
+        if 'security_id' in security
+    }
+    
+    logger.info(security_lookup)
+    
+    for holding in holdings:
+        try:
+            if 'account_id' not in holding:
+                logger.error("Holding missing account_id field")
+                continue
 
-        if not "name" in tran or tran["name"] is None:
-            tran["name"] = ""
+            try:
+                account = Account.objects.get(account_id=holding['account_id'])
+            except Account.DoesNotExist:
+                logger.error(f"Account not found for holding {holding.get('security_id', 'unknown')}")
+                continue
+            except MultipleObjectsReturned:
+                logger.error(f"Multiple accounts found for holding {holding.get('security_id', 'unknown')}")
+                continue
+            except DatabaseError as e:
+                logger.error(f"Database error while fetching account: {e}")
+                continue
 
-        if not "payment_channel" in tran or tran["payment_channel"] is None:
-            tran["payment_channel"] = ""
+            security_id = holding.get('security_id', '')
+            security_info = security_lookup.get(security_id, {'name': '', 'ticker': ''})
 
-        if not "category" in tran or tran["category"] is None:
-            tran["category"] = []
+            cleaned_investment = {
+                "account": account.pk,
+                "security_id": security_id,
+                "security_name": security_info['name'],
+                "security_ticker": security_info['ticker'],
+                "price": holding.get('institution_price', 0),
+                "price_as_of": holding.get('institution_price_as_of', datetime.now().date()),
+                "cost_basis": holding.get('cost_basis', 0),
+                "quantity": holding.get('quantity', 0)
+            }
 
-        data["amount"] = tran["amount"]
-        data["date"] = tran["date"]
-        data["name"] = tran["name"]
-        data["payment_channel"] = tran["payment_channel"]
-        data["primary_category"] = tran["category"][0]
-        if len(tran["category"]) > 1:
-            data["detailed_category"] = tran["category"][1]
-        else:
-            data["detailed_category"] = ""
+            cleaned_investments.append(cleaned_investment)
 
-        transaction_data.append(data)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Error cleaning investment data: {e}", extra={
+                'security_id': holding.get('security_id', 'unknown'),
+                'error': str(e)
+            })
+            continue
 
-    return transaction_data
+    return cleaned_investments
 
+def clean_institution_data(institution_id: str, institution: object):
+    """
+    Clean and transform Plaid institution data into application format.
+    
+    Args:
+        institution_id: The institution id from Plaid API
+        institution: The institution data from Plaid API
+        
+    Returns:
+        Cleaned institution data ready for serialization
+    """    
+    try:
+        cleaned_institution = {
+            "institution_id": institution_id,
+            "institution_name": institution.get("name", "")
+        }
+        
+        return cleaned_institution
 
-def clean_investment_data(holdings, securities):
-    investment_data = []
+    except (KeyError, TypeError) as e:
+        logger.error(f"Error cleaning institution data: {e}", extra={
+            'error': str(e)
+        })
+        
+def clean_item_data(item_id: str, access_token: str, institution_id: str):
+    """
+    Clean and transform Plaid institution data into application format.
+    
+    Args:
+        institution_id: The institution id from Plaid API
+        institution: The institution data from Plaid API
+        
+    Returns:
+        Cleaned institution data ready for serialization
+    """
+        
+    try:
+        cleaned_item = {
+            "item_id": item_id,
+            "institution": institution_id,
+            "access_token": access_token
+        }
+        
+        return cleaned_item
 
-    for h in holdings:
-        new_investment_data = {}
-        new_investment_data["account"] = Account.objects.get(
-            account_id=h["account_id"]
-        ).pk
-
-        if not "security_id" in h or h["security_id"] is None:
-            h["security_id"] = ""
-
-        if not "institution_price" in h or h["institution_price"] is None:
-            h["institution_price"] = 0
-
-        if not "institution_price_as_of" in h or h["institution_price_as_of"] is None:
-            h["institution_price_as_of"] = datetime.now().date()
-
-        if not "cost_basis" in h or h["cost_basis"] is None:
-            h["cost_basis"] = 0
-
-        if not "quantity" in h or h["quantity"] is None:
-            h["quantity"] = 0
-
-        new_investment_data["security_id"] = h["security_id"]
-
-        # Find security name and ticker in list of securities and set the values in our new investment data dict
-        for s in securities:
-            if s["security_id"] == new_investment_data["security_id"]:
-                new_investment_data["security_name"] = s["name"]
-                new_investment_data["security_ticker"] = s["ticker_symbol"]
-
-        if new_investment_data["security_name"] is None:
-            new_investment_data["security_name"] = ""
-
-        if new_investment_data["security_ticker"] is None:
-            new_investment_data["security_ticker"] = ""
-
-        new_investment_data["price"] = h["institution_price"]
-        new_investment_data["price_as_of"] = h["institution_price_as_of"]
-        new_investment_data["cost_basis"] = h["cost_basis"]
-        new_investment_data["quantity"] = h["quantity"]
-
-        investment_data.append(new_investment_data)
-
-    return investment_data
+    except (KeyError, TypeError) as e:
+        logger.error(f"Error cleaning item data: {e}", extra={
+            'error': str(e)
+        })
+    
+    

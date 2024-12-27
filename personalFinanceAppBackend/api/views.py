@@ -30,9 +30,10 @@ from .serializers import (
     AccountSerializer,
     InstitutionSerializer,
     InvestmentSerializer,
-    TransactionSerializer,
+    ItemSerializer,
+    TransactionSerializer
 )
-from .utils import clean_accounts_data, clean_investment_data, clean_transaction_data
+from .utils import clean_accounts_data, clean_institution_data, clean_investment_data, clean_item_data, clean_transaction_data
 
 load_dotenv("./env/.env.local.sandbox")
 
@@ -112,9 +113,9 @@ class PublicTokenExchange(APIView):
                     }
                 }
             )
-
-        access_token = token_response["access_token"]
+        
         item_id = token_response["item_id"]
+        access_token = token_response["access_token"]
 
         # Get Institution ID That Item ID Relates To
         item_request = ItemGetRequest(access_token=access_token)
@@ -123,42 +124,41 @@ class PublicTokenExchange(APIView):
 
         institution_id = item_response["item"]["institution_id"]
 
+        # Get Institution Data from Plaid and Save if New
         institution_request = InstitutionsGetByIdRequest(
             institution_id=institution_id, country_codes=[CountryCode("US")]
         )
 
         institution_response = client.institutions_get_by_id(institution_request)
+        
 
         # Save New Institutions to DB
         if Institution.objects.filter(institution_id=institution_id):
             pass
         else:
-            try:
-                institution = Institution.objects.create(
-                    institution_id=institution_id,
-                    institution_name=institution_response["institution"]["name"],
-                )
-                institution.save()
+            try:                
+                institution = clean_institution_data(institution_id, institution_response["institution"])
+                
+                institution_serializer = InstitutionSerializer(data=institution)
+                institution_serializer.is_valid(raise_exception=True)
+                institution_serializer.save()
             except Exception as e:
                 return Response(
                     data={"message": "Failed to Save Institution", "error": str(e)},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
-        institution_pk = Institution.objects.get(institution_id=institution_id).pk
+        # Save Item to Database if New
+        if Item.objects.filter(user=user, institution__institution_id=institution_id):
+            return Response("Item for Institution Exists for User", status=status.HTTP_200_OK)
 
-        if Item.objects.filter(user=user, institution_id=institution_pk):
-            return Response("Item for Institution Exists for User", status=status.HTTP_409_CONFLICT)
-
-        # Save Item to Database
         try:
-            item = Item.objects.create(
-                user=user,
-                item_id=item_id,
-                access_token=access_token,
-                institution_id=institution_pk,
-            )
-            item.save()
+            institution = Institution.objects.get(institution_id=institution_id)
+            item = clean_item_data(item_id, access_token, institution.pk)
+            
+            item_serializer = ItemSerializer(data=item, context={'user': user})
+            item_serializer.is_valid(raise_exception=True)
+            item_serializer.save()
         except Exception as e:
             return Response(
                 data={"message": "Failed to Save Item", "error": str(e)},
@@ -176,11 +176,11 @@ class InstitutionDetailsDB(APIView):
     authentication_classes = [TokenAuthentication]
 
     def get(self, request, account_id):
-        account = Account.objects.get(id=account_id)
+        account = Account.objects.get(pk=account_id)
 
-        item = Item.objects.get(id=account.item.pk)
+        item = Item.objects.get(item=account.item)
 
-        institution = Institution.objects.get(id=item.institution_id)
+        institution = Institution.objects.get(institution=item.institution)
 
         institution_serializer = InstitutionSerializer(institution)
 
@@ -222,7 +222,7 @@ class AccountListPlaid(APIView):
 
             # Skip Existing Accounts and Save New Accounts
             for acc in accounts:
-                if Account.objects.filter(item_id=acc["item"], account_id=acc["account_id"]):
+                if Account.objects.filter(item=acc["item"], account_id=acc["account_id"]):
                     continue
                 else:
                     try:
@@ -238,7 +238,7 @@ class AccountListPlaid(APIView):
                 accounts_dict[item.institution_id] = accounts_saved_list
 
         if not accounts_dict:
-            return Response("No New Accounts to Save From Plaid", status=status.HTTP_409_CONFLICT)
+            return Response("No New Accounts to Save From Plaid", status=status.HTTP_200_OK)
 
         return Response(accounts_dict, status=status.HTTP_201_CREATED)
 
@@ -253,7 +253,7 @@ class AccountListDB(APIView):
         accounts = []
 
         for item in items:
-            db_accounts = Account.objects.filter(item_id=item.id)
+            db_accounts = Account.objects.filter(item=item.pk)
             account_serializer = AccountSerializer(db_accounts, many=True)
             for acc in account_serializer.data:
                 accounts.append(acc)
@@ -265,9 +265,9 @@ class AccountDetailsDB(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
-    def get(self, request, id):
+    def get(self, request, pk):
         try:
-            account = Account.objects.get(id=id)
+            account = Account.objects.get(pk=pk)
             account_serializer = AccountSerializer(account)
         except Account.DoesNotExist:
             return Response("Account Not Found", status=status.HTTP_404_NOT_FOUND)
@@ -322,12 +322,12 @@ class TransactionListPlaid(APIView):
 
                     transactions_saved_list.append(transaction_serializer.data)
             if len(transactions_saved_list) != 0:
-                transactions_dict[item.institution_id] = transactions_saved_list
+                transactions_dict[item.institution.pk] = transactions_saved_list
 
         if not transactions_dict:
             return Response(
                 "No New Transactions to Save From Plaid",
-                status=status.HTTP_409_CONFLICT,
+                status=status.HTTP_200_OK,
             )
 
         return Response(transactions_dict, status=status.HTTP_201_CREATED)
@@ -349,19 +349,19 @@ class TransactionListDB(APIView):
         print(f"Start: {start_date} End: {end_date}")
         transactions = []
         for item in items:
-            db_accounts = Account.objects.filter(item_id=item.id)
+            db_accounts = Account.objects.filter(item=item)
 
-            account_id_list = [acc.id for acc in db_accounts]
+            account_id_list = [acc.pk for acc in db_accounts]
 
             db_transactions = Transaction.objects.filter(
                 account__in=account_id_list, date__range=(start_date, end_date)
-            )
+            ).order_by('-date')
             transaction_serializer = TransactionSerializer(db_transactions, many=True)
             for tran in transaction_serializer.data:
                 transactions.append(tran)
 
         return Response(
-            sorted(transactions, key=lambda t: t["date"], reverse=True),
+            transactions,
             status=status.HTTP_200_OK,
         )
 
@@ -397,7 +397,7 @@ class InvestmentListPlaid(APIView):
             # Skip Existing Investments for an Account and Save New Investments for an Account
             for investment in investment_data:
                 if Investment.objects.filter(
-                    account_id=investment["account"],
+                    account=investment["account"],
                     security_id=investment["security_id"],
                 ):
                     continue
@@ -416,7 +416,7 @@ class InvestmentListPlaid(APIView):
         if not investments_dict:
             return Response(
                 "No New Investment Accounts to Save From Plaid",
-                status=status.HTTP_409_CONFLICT,
+                status=status.HTTP_200_OK,
             )
 
         return Response(investments_dict, status=status.HTTP_201_CREATED)
@@ -431,9 +431,9 @@ class InvestmentListDB(APIView):
         investments = []
 
         for item in items:
-            db_accounts = Account.objects.filter(item_id=item.id)
+            db_accounts = Account.objects.filter(item=item)
 
-            account_id_list = [acc.id for acc in db_accounts]
+            account_id_list = [acc.pk for acc in db_accounts]
 
             db_investments = Investment.objects.filter(account__in=account_id_list)
             investment_serializer = InvestmentSerializer(db_investments, many=True)

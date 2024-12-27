@@ -17,7 +17,7 @@ class Item(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "institution_id"],
+                fields=["user", "institution"],
                 name="user_institution_unique_constraint",
             )
         ]
@@ -29,7 +29,7 @@ class Item(models.Model):
 class Account(models.Model):
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
     account_id = models.CharField(max_length=100, blank=True)
-    available_balance = models.FloatField()
+    available_balance = models.FloatField(null=True)
     current_balance = models.FloatField()
     name = models.CharField(max_length=100, blank=True)
     account_type = models.CharField(max_length=100, blank=True)
@@ -38,7 +38,7 @@ class Account(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["item_id", "account_id"], name="item_account_unique_constraint"
+                fields=["item", "account_id"], name="item_account_unique_constraint"
             )
         ]
 
@@ -62,9 +62,9 @@ class Transaction(models.Model):
 
 class Investment(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE, blank=True)
-    security_id = models.CharField(max_length=100, blank=True)
-    security_name = models.CharField(max_length=100, blank=True)
-    security_ticker = models.CharField(max_length=20, blank=True)
+    security_id = models.CharField(max_length=100)
+    security_name = models.CharField(max_length=100, blank=True, null=True)
+    security_ticker = models.CharField(max_length=20, blank=True, null=True)
     price = models.FloatField()
     price_as_of = models.DateField()
     cost_basis = models.FloatField()

@@ -132,6 +132,47 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Logging
+# Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        # 'file': {
+        #     'class': 'logging.FileHandler',
+        #     'filename': os.path.join('logs', 'django.log'),
+        #     'formatter': 'verbose',
+        # },
+    },
+    'loggers': {
+        # This is the root logger that will catch all logs from Django
+        '': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        # This is a specific logger for your app
+        'personal_finance_app': {  # Replace with your actual app name
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
