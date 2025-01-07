@@ -1,9 +1,9 @@
 import json
 import os
 from datetime import datetime, timedelta
+from logging import getLogger
 
 from django.db import IntegrityError
-from dotenv import load_dotenv
 from plaid.api import plaid_api
 from plaid.api_client import ApiClient, ApiException
 from plaid.configuration import Configuration, Environment
@@ -22,7 +22,6 @@ from plaid.model.transactions_get_request import TransactionsGetRequest
 from rest_framework import generics, status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import APIView
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Account, Institution, Investment, Item, Transaction
@@ -31,13 +30,20 @@ from .serializers import (
     InstitutionSerializer,
     InvestmentSerializer,
     ItemSerializer,
-    TransactionSerializer
+    TransactionSerializer,
 )
-from .utils import clean_accounts_data, clean_institution_data, clean_investment_data, clean_item_data, clean_transaction_data
+from .utils import (
+    clean_accounts_data,
+    clean_institution_data,
+    clean_investment_data,
+    clean_item_data,
+    clean_transaction_data,
+)
 
-load_dotenv("./env/.env.local.sandbox")
-
-host = Environment.Sandbox
+if os.getenv("PLAID_ENV") == "production":
+    host = Environment.Production
+else:
+    host = Environment.Sandbox
 
 configuration = Configuration(
     host=host,
@@ -51,9 +57,10 @@ configuration = Configuration(
 api_client = ApiClient(configuration)
 client = plaid_api.PlaidApi(api_client)
 
+logger = getLogger("personal_finance_app")
+
 
 class PlaidLinkToken(APIView):
-    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def post(self, request):
@@ -71,7 +78,9 @@ class PlaidLinkToken(APIView):
                 user=LinkTokenCreateRequestUser(client_user_id=str(user.id)),
             )
             update_link_response = client.link_token_create(update_link_request)
-            return Response(update_link_response.to_dict(), status=status.HTTP_201_CREATED)
+            return Response(
+                update_link_response.to_dict(), status=status.HTTP_201_CREATED
+            )
 
         # Create a link_token for the new user
         request = LinkTokenCreateRequest(
@@ -89,14 +98,20 @@ class PlaidLinkToken(APIView):
 
 
 class PublicTokenExchange(APIView):
-    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def post(self, request):
         user = request.user
+        institution_id = request.data["institution_id"]
+        institution_name = request.data["institution_name"]
         public_token = request.data["publicToken"]
 
         token_request = ItemPublicTokenExchangeRequest(public_token=public_token)
+
+        if Item.objects.get(user=user, institution__institution_id=institution_id):
+            return Response(
+                "Item for Institution Exists for User", status=status.HTTP_409_CONFLICT
+            )
 
         try:
             token_response = client.item_public_token_exchange(token_request)
@@ -113,32 +128,17 @@ class PublicTokenExchange(APIView):
                     }
                 }
             )
-        
+
         item_id = token_response["item_id"]
         access_token = token_response["access_token"]
-
-        # Get Institution ID That Item ID Relates To
-        item_request = ItemGetRequest(access_token=access_token)
-
-        item_response = client.item_get(item_request)
-
-        institution_id = item_response["item"]["institution_id"]
-
-        # Get Institution Data from Plaid and Save if New
-        institution_request = InstitutionsGetByIdRequest(
-            institution_id=institution_id, country_codes=[CountryCode("US")]
-        )
-
-        institution_response = client.institutions_get_by_id(institution_request)
-        
 
         # Save New Institutions to DB
         if Institution.objects.filter(institution_id=institution_id):
             pass
         else:
-            try:                
-                institution = clean_institution_data(institution_id, institution_response["institution"])
-                
+            try:
+                institution = clean_institution_data(institution_id, institution_name)
+
                 institution_serializer = InstitutionSerializer(data=institution)
                 institution_serializer.is_valid(raise_exception=True)
                 institution_serializer.save()
@@ -148,15 +148,11 @@ class PublicTokenExchange(APIView):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
-        # Save Item to Database if New
-        if Item.objects.filter(user=user, institution__institution_id=institution_id):
-            return Response("Item for Institution Exists for User", status=status.HTTP_200_OK)
-
         try:
             institution = Institution.objects.get(institution_id=institution_id)
             item = clean_item_data(item_id, access_token, institution.pk)
-            
-            item_serializer = ItemSerializer(data=item, context={'user': user})
+
+            item_serializer = ItemSerializer(data=item, context={"user": user})
             item_serializer.is_valid(raise_exception=True)
             item_serializer.save()
         except Exception as e:
@@ -172,7 +168,6 @@ class PublicTokenExchange(APIView):
 
 
 class InstitutionDetailsDB(APIView):
-    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request, account_id):
@@ -188,7 +183,6 @@ class InstitutionDetailsDB(APIView):
 
 
 class AccountListPlaid(APIView):
-    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def post(self, request):
@@ -222,7 +216,9 @@ class AccountListPlaid(APIView):
 
             # Skip Existing Accounts and Save New Accounts
             for acc in accounts:
-                if Account.objects.filter(item=acc["item"], account_id=acc["account_id"]):
+                if Account.objects.filter(
+                    item=acc["item"], account_id=acc["account_id"]
+                ):
                     continue
                 else:
                     try:
@@ -238,13 +234,14 @@ class AccountListPlaid(APIView):
                 accounts_dict[item.institution_id] = accounts_saved_list
 
         if not accounts_dict:
-            return Response("No New Accounts to Save From Plaid", status=status.HTTP_200_OK)
+            return Response(
+                "No New Accounts to Save From Plaid", status=status.HTTP_200_OK
+            )
 
         return Response(accounts_dict, status=status.HTTP_201_CREATED)
 
 
 class AccountListDB(APIView):
-    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):
@@ -262,7 +259,6 @@ class AccountListDB(APIView):
 
 
 class AccountDetailsDB(APIView):
-    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request, pk):
@@ -272,12 +268,13 @@ class AccountDetailsDB(APIView):
         except Account.DoesNotExist:
             return Response("Account Not Found", status=status.HTTP_404_NOT_FOUND)
         except Account.MultipleObjectsReturned:
-            return Response("Multiple Accounts Returned", status=status.HTTP_409_CONFLICT)
+            return Response(
+                "Multiple Accounts Returned", status=status.HTTP_409_CONFLICT
+            )
         return Response(account_serializer.data, status=status.HTTP_200_OK)
 
 
 class TransactionListPlaid(APIView):
-    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def post(self, request):
@@ -291,9 +288,9 @@ class TransactionListPlaid(APIView):
             start_date = (datetime.now() - timedelta(days=720)).date()
             end_date = datetime.now().date()
 
-            if ("start_date" in request.data and request.data["start_date"] is not None) and (
-                "end_date" in request.data and request.data["end_date"] is not None
-            ):
+            if (
+                "start_date" in request.data and request.data["start_date"] is not None
+            ) and ("end_date" in request.data and request.data["end_date"] is not None):
                 start_date = request.data["start_date"]
                 end_date = request.data["end_date"]
 
@@ -334,7 +331,6 @@ class TransactionListPlaid(APIView):
 
 
 class TransactionListDB(APIView):
-    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):
@@ -346,7 +342,6 @@ class TransactionListDB(APIView):
         if start_date == "undefined" or end_date == "undefined":
             start_date = (datetime.now() - timedelta(days=720)).date()
             end_date = datetime.now().date()
-        print(f"Start: {start_date} End: {end_date}")
         transactions = []
         for item in items:
             db_accounts = Account.objects.filter(item=item)
@@ -355,7 +350,7 @@ class TransactionListDB(APIView):
 
             db_transactions = Transaction.objects.filter(
                 account__in=account_id_list, date__range=(start_date, end_date)
-            ).order_by('-date')
+            ).order_by("-date")
             transaction_serializer = TransactionSerializer(db_transactions, many=True)
             for tran in transaction_serializer.data:
                 transactions.append(tran)
@@ -370,11 +365,9 @@ class TransactionDetailsDB(generics.RetrieveUpdateDestroyAPIView):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
 
 
 class InvestmentListPlaid(APIView):
-    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def post(self, request):
@@ -392,7 +385,9 @@ class InvestmentListPlaid(APIView):
             response = client.investments_holdings_get(investment_request)
 
             ## Clean Investment Data
-            investment_data = clean_investment_data(response["holdings"], response["securities"])
+            investment_data = clean_investment_data(
+                response["holdings"], response["securities"]
+            )
 
             # Skip Existing Investments for an Account and Save New Investments for an Account
             for investment in investment_data:
@@ -423,7 +418,6 @@ class InvestmentListPlaid(APIView):
 
 
 class InvestmentListDB(APIView):
-    permission_classes = [IsAuthenticated]
     authentication_classes = [TokenAuthentication]
 
     def get(self, request):

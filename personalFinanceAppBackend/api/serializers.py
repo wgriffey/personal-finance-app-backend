@@ -1,22 +1,25 @@
 from rest_framework import serializers
 
-from .models import Account, Institution, Investment, Transaction, Item
+from .models import Account, Institution, Investment, Item, Transaction
+
 
 class InstitutionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Institution
         fields = ["id", "institution_id", "institution_name"]
 
+
 class ItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Item
-        fields=["id", "item_id", "institution", "access_token"]
-        
+        fields = ["id", "item_id", "institution", "access_token"]
+
     def create(self, validated_data):
         # Retrieve the user from the serializer's context
-        user = self.context['user']
-        validated_data['user'] = user
+        user = self.context["user"]
+        validated_data["user"] = user
         return super().create(validated_data)
+
 
 class AccountSerializer(serializers.ModelSerializer):
     class Meta:
