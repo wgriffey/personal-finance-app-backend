@@ -20,7 +20,6 @@ from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUse
 from plaid.model.products import Products
 from plaid.model.transactions_get_request import TransactionsGetRequest
 from rest_framework import generics, status
-from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import APIView
 from rest_framework.response import Response
 
@@ -61,8 +60,6 @@ logger = getLogger("personal_finance_app")
 
 
 class PlaidLinkToken(APIView):
-    authentication_classes = [TokenAuthentication]
-
     def post(self, request):
         user = request.user
         if "item_id" in request.data and not request.data["item_id"] is None:
@@ -98,17 +95,15 @@ class PlaidLinkToken(APIView):
 
 
 class PublicTokenExchange(APIView):
-    authentication_classes = [TokenAuthentication]
-
     def post(self, request):
         user = request.user
-        institution_id = request.data["institution_id"]
-        institution_name = request.data["institution_name"]
-        public_token = request.data["publicToken"]
+        institution_id = request.data["institution_data"]["institution_id"]
+        institution_name = request.data["institution_data"]["name"]
+        public_token = request.data["public_token"]
 
         token_request = ItemPublicTokenExchangeRequest(public_token=public_token)
 
-        if Item.objects.get(user=user, institution__institution_id=institution_id):
+        if Item.objects.filter(user=user, institution__institution_id=institution_id):
             return Response(
                 "Item for Institution Exists for User", status=status.HTTP_409_CONFLICT
             )
@@ -168,8 +163,6 @@ class PublicTokenExchange(APIView):
 
 
 class InstitutionDetailsDB(APIView):
-    authentication_classes = [TokenAuthentication]
-
     def get(self, request, account_id):
         account = Account.objects.get(pk=account_id)
 
@@ -183,8 +176,6 @@ class InstitutionDetailsDB(APIView):
 
 
 class AccountListPlaid(APIView):
-    authentication_classes = [TokenAuthentication]
-
     def post(self, request):
         items = Item.objects.filter(user=request.user)
         accounts_saved_list = []
@@ -242,11 +233,8 @@ class AccountListPlaid(APIView):
 
 
 class AccountListDB(APIView):
-    authentication_classes = [TokenAuthentication]
-
     def get(self, request):
         items = Item.objects.filter(user=request.user)
-
         accounts = []
 
         for item in items:
@@ -259,8 +247,6 @@ class AccountListDB(APIView):
 
 
 class AccountDetailsDB(APIView):
-    authentication_classes = [TokenAuthentication]
-
     def get(self, request, pk):
         try:
             account = Account.objects.get(pk=pk)
@@ -275,8 +261,6 @@ class AccountDetailsDB(APIView):
 
 
 class TransactionListPlaid(APIView):
-    authentication_classes = [TokenAuthentication]
-
     def post(self, request):
         items = Item.objects.filter(user=request.user)
         transactions_saved_list = []
@@ -331,8 +315,6 @@ class TransactionListPlaid(APIView):
 
 
 class TransactionListDB(APIView):
-    authentication_classes = [TokenAuthentication]
-
     def get(self, request):
         items = Item.objects.filter(user=request.user)
         start_date = request.query_params.get(
@@ -364,12 +346,9 @@ class TransactionListDB(APIView):
 class TransactionDetailsDB(generics.RetrieveUpdateDestroyAPIView):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
-    authentication_classes = [TokenAuthentication]
 
 
 class InvestmentListPlaid(APIView):
-    authentication_classes = [TokenAuthentication]
-
     def post(self, request):
         items = Item.objects.filter(user=request.user)
         investments_saved_list = []
@@ -418,7 +397,6 @@ class InvestmentListPlaid(APIView):
 
 
 class InvestmentListDB(APIView):
-    authentication_classes = [TokenAuthentication]
 
     def get(self, request):
         items = Item.objects.filter(user=request.user)

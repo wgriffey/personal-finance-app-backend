@@ -214,7 +214,7 @@ def clean_institution_data(institution_id: str, institution_name: object):
     try:
         cleaned_institution = {
             "institution_id": institution_id,
-            "institution_name": institution_name.get("name", ""),
+            "institution_name": institution_name,
         }
 
         return cleaned_institution
