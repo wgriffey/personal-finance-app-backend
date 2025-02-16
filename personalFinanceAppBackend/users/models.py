@@ -12,24 +12,23 @@ class CustomUserManager(UserManager):
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self.db)
-        
         return user
 
     def create_user(self, username=None, email=None, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", False)
         extra_fields.setdefault("is_superuser", False)
-        
+
         new_user = self._create_user(email, password, **extra_fields)
-        
-        return (new_user)
+
+        return new_user
 
     def create_super_user(self, email=None, password=None, **extra_fields):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
 
         new_super_user = self._create_user(email, password, **extra_fields)
-                
-        return (new_super_user)
+
+        return new_super_user
 
 
 class User(AbstractBaseUser, PermissionsMixin):

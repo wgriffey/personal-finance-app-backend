@@ -3,6 +3,7 @@ from djoser.social.views import ProviderAuthView
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -74,6 +75,8 @@ class CustomTokenVerifyView(TokenVerifyView):
 
         if access_token:
             request.data["token"] = access_token
+        else:
+            raise InvalidToken()
 
         return super().post(request, *args, **kwargs)
 
